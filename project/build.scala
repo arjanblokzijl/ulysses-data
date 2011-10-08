@@ -8,7 +8,7 @@ object UlyssesDataBuild extends Build {
     id = "ulysses-data",
     base = file("."),
     settings = standardSettings ++ Seq(
-      libraryDependencies ++= Seq(Dependencies.scalaz)
+      libraryDependencies ++= Seq(Dependencies.scalaz, Dependencies.ScalaCheck, Dependencies.Specs)
     )
   )
 
@@ -25,8 +25,8 @@ lazy val standardSettings = Defaults.defaultSettings ++ Seq(
     //lazy val specs = "org.scala-tools.testing" %% "specs" % "1.6.7" % "test" withSources ()
     lazy val scalacheck = "org.scala-tools.testing" % "scalacheck_2.8.1" % "1.8" % "test" withSources ()
 
-    def ScalaCheck(scalaVersion: String) = "org.scala-tools.testing" % "scalacheck_2.9.1" % "1.9"
+    def ScalaCheck = "org.scala-tools.testing" % "scalacheck_2.9.1" % "1.9" % "test"
 
-    def Specs(scalaVersion: String) = "org.scala-tools.testing" % "specs_1.6.8" % "test"
+    def Specs = "org.specs2" % "specs2_2.9.1" % "1.6.1" % "test"
   }
 }
