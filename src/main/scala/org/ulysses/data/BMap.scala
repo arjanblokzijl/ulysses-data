@@ -277,12 +277,18 @@ sealed trait BMap[K, V] {
     }
   }
 
-  def union(m: BMap[K, V])(implicit o: Order[K]): BMap[K, V] = (m, this) match {
+
+  /**
+   * O(n+m).
+   * The expression t1.union(t2) takes the left-biased union of t1 and t2, preferring t1 when duplicate keys are encountered.
+   * The implementation uses the efficient hedge-union algorithm.
+   * Hedge-union is more efficient on (bigset \``union`\` smallset).
+   */
+  def union(m: BMap[K, V])(implicit o: Order[K]): BMap[K, V] = (this, m) match {
     case (Tip(), t2) => t2
     case (t1, Tip()) => t1
     case (t1, t2) => hedgeUnionL(_ => LT, _ => GT, t1, t2)
   }
-
 
   def hedgeUnionL(k1: K => Ordering, k2: K => Ordering, m1: BMap[K, V], m2: BMap[K, V])(implicit o: Order[K]): BMap[K,V] = (k1, k2, m1, m2) match {
     case (_, _,t1, Tip()) => t1
@@ -383,8 +389,6 @@ sealed trait BMap[K, V] {
     go(this)
   }
 
-  def fromList(l: List[(K, V)])(implicit o: Order[K]): BMap[K, V] = l.foldLeft(empty[K, V]){(t, kv) => t.insert(kv._1, kv._2)}
-
 
 
 //  {--------------------------------------------------------------------
@@ -425,6 +429,23 @@ sealed trait BMap[K, V] {
     }
     go(b, this)
   }
+
+  /**
+   * O(n). Pre-order fold. The function will be applied from the highest value to the lowest. 
+   */
+  def foldlWithKey[B](f: B => K => V => B)(b: B): B = {
+    def go(z: B, m: BMap[K, V]): B = (z, m) match {
+      case (z, Tip()) => z
+      case (z, Bin(_, kx, x, l, r)) => go(f(go(z, l))(kx)(x), r)
+    }
+    go(b, this)
+  }
+
+  def toList: List[(K, V)] = toAscList
+
+  def toAscList: List[(K, V)] = foldrWithKey[List[(K, V)]](k => x => xs => (k, x) :: xs)(Nil)
+
+  def toDescList: List[(K, V)] = foldlWithKey[List[(K, V)]](xs => k => x => (k, x) :: xs)(Nil)
 
   //debugging /- printing the map
   def showTree: String = showTreeWith(k => v => k.toString ++ ":=" ++ v.toString, true, true)
@@ -508,8 +529,12 @@ sealed trait BMap[K, V] {
   }
 }
 
+trait BMaps {
+  import BMap._
+  def fromList[K, V](l: List[(K, V)])(implicit o: Order[K]): BMap[K, V] = l.foldLeft(empty[K, V]){(t, kv) => t.insert(kv._1, kv._2)}
+}
 
-object BMap {
+object BMap extends BMaps {
 
   val delta = 4
   val ratio = 2
@@ -544,6 +569,10 @@ object BMap {
    implicit def BMapFunctor[K]: Functor[({type λ[α] = BMap[K, α]})#λ] = new Functor[({type λ[α] = BMap[K, α]})#λ] {
      def fmap[A, B](f: A => B) = _ map f
    }
+
+  implicit def BMapEqual[K: Equal, V: Equal]: Equal[BMap[K, V]] =
+    Equal.equalC[BMap[K, V]]((t1, t2) => t1.size == t2.size && (t1.toList == t2.toList))
+
 
 //instance (Show k, Show a) => Show (Map k a) where
 //  showsPrec d m  = showParen (d > 10) $

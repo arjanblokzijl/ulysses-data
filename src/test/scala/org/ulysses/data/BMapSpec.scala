@@ -13,21 +13,22 @@ import org.specs2.mutable._
  */
 
 class BMapSpec extends Specification {
+  import scalaz._
+  import Scalaz._
   import BMap._
 
   "A BMap" should {
-    "return the inserted value" in {
-      "Hello world" must startWith("Hello")
-    }
+    "create BMap from list" in {
+      val t1 = fromList(List((5, "a"), (3, "b"), (7, "C")))
 
+      (t1 === (singleton(5, "a") insert(3, "b") insert(7, "C"))) must beTrue
+    }
+    
+    "union maps in left-biased manner" in {
+      val t1 = fromList(List((5, "a"), (3, "b")))
+      val t2 = fromList(List((5, "A"), (7, "C")))
+
+      (t1.union(t2) === (fromList(List((3, "b"), (5, "a"), (7, "C"))))) must beTrue
+    }
   }
 }
-//
-//  private def checkComposibility = {
-//    def associative[F[_], X, Y, Z](cat: GenericCategory[F],
-//                          axy: Arbitrary[(X => Y)],
-//                          ayz: Arbitrary[(Y => Z)],
-//                          azx: Arbitrary[(X => Y)]) =
-//      forAll((a1: F[X], f1: (X => Y), f2: (Y => Z), f3: (Z => X)) =>
-//        ((cat.compose(f1, cat.compose(f2, f3))  == cat.compose(cat.compose(f1, f2), f3)).label("composition"))
-//  }
