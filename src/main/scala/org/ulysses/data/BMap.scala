@@ -277,7 +277,6 @@ sealed trait BMap[K, V] {
     }
   }
 
-
   /**
    * O(n+m).
    * The expression t1.union(t2) takes the left-biased union of t1 and t2, preferring t1 when duplicate keys are encountered.
