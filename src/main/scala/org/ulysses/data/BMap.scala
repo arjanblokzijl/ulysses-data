@@ -383,7 +383,10 @@ sealed trait BMap[K, V] {
     go(this)
   }
 
-  
+  def fromList(l: List[(K, V)])(implicit o: Order[K]): BMap[K, V] = l.foldLeft(empty[K, V]){(t, kv) => t.insert(kv._1, kv._2)}
+
+
+
 //  {--------------------------------------------------------------------
 //  Lists
 //  use [foldlStrict] to reduce demand on the control-stack
@@ -402,13 +405,33 @@ sealed trait BMap[K, V] {
 //  where
 //    ins t (k,x) = insert k x t
 
+//  -- | /O(n)/. Fold the values in the map, such that
+//-- @'fold' f z == 'Prelude.foldr' f z . 'elems'@.
+//-- For example,
+//--
+//-- > elems map = fold (:) [] map
+//--
+//-- > let f a len = len + (length a)
+//-- > fold f 0 (fromList [(5,"a"), (3,"bbb")]) == 4
+//fold :: (a -> b -> b) -> b -> Map k a -> b
+//fold f = foldWithKey (\_ x' z' -> f x' z')
+
+  def fold[B](f: V => B => B)(b: B): B = foldrWithKey(_ => f)(b)
+
+  def foldrWithKey[B](f: K => V => B => B)(b: B): B = {
+    def go(z: B, m: BMap[K, V]): B = (z, m) match {
+      case (z, Tip()) => z
+      case (z, Bin(_, kx, x, l, r)) => go(f(kx)(x)(go(z, r)), l)
+    }
+    go(b, this)
+  }
 
   //debugging /- printing the map
   def showTree: String = showTreeWith(k => v => k.toString ++ ":=" ++ v.toString, true, true)
 
   def showTreeWith(showelem: K => V => String, hang: Boolean, wide: Boolean): String = {
     if (hang) showsTreeHang(showelem, wide, List(), this)
-    else showsTreeHang(showelem, wide, List(), this)
+    else showsTreeHang(showelem, wide, List(), this)//TODO obviously...
   }
 
   def showsTree(showelem: K => V => String, wide: Boolean, lbars: List[String], rbars: List[String], t: BMap[K, V]): String = t match {
@@ -425,7 +448,7 @@ sealed trait BMap[K, V] {
     }
   }
 
-  private def node: String = "+--"
+  private lazy val node: String = "+--"
 
   private def showWide(wide: Boolean, bars: List[String]): String = {
     if (wide) bars.reverse.mkString + "|\n"
