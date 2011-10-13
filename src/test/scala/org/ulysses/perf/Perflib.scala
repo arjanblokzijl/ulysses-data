@@ -4,7 +4,7 @@ package org.ulysses.perf
  * User: arjan
  */
 
-object PerfLib {
+object Perflib {
   @inline
   def time(op: =>Unit) = {
     var data = new Array[Test](20)

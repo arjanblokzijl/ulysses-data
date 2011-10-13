@@ -8,7 +8,7 @@ import scala.collection.Map
  */
 
 object BMapPerf {
-  import PerfLib._
+  import Perflib._
   import BMap._
 
    def main(args: Array[String]) {

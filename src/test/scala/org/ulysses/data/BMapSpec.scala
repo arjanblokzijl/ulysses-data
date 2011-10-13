@@ -30,5 +30,11 @@ class BMapSpec extends Specification {
 
       (t1.union(t2) === (fromList(List((3, "b"), (5, "a"), (7, "C"))))) must beTrue
     }
+
+    "be a pointed instance" in {
+      type IntMap[X] = BMap[Int, X]
+      val t1 = "a".point[IntMap]
+      (t1 === singleton(0, "a")) must beTrue
+    }
   }
 }

@@ -388,9 +388,9 @@ sealed trait BMap[K, V] {
     go(this)
   }
 
-  def fold[B](f: V => B => B)(b: B): B = foldrWithKey(_ => f)(b)
+  def foldr[B](f: V => (=> B) => B)(b: B): B = foldrWithKey(_ => f)(b)
 
-  def foldrWithKey[B](f: K => V => B => B)(b: B): B = {
+  def foldrWithKey[B](f: K => V => (=> B) => B)(b: B): B = {
     def go(z: B, m: BMap[K, V]): B = (z, m) match {
       case (z, Tip()) => z
       case (z, Bin(_, kx, x, l, r)) => go(f(kx)(x)(go(z, r)), l)
@@ -410,6 +410,9 @@ sealed trait BMap[K, V] {
   }
 
   def toList: List[(K, V)] = toAscList
+
+//  import wrap.StreamW._
+//  def toStream: String[(K, V)] = foldrWithKey(Stream[(K, V)])(k => x => xs => (k,x))
 
   def toAscList: List[(K, V)] = foldrWithKey[List[(K, V)]](k => x => xs => (k, x) :: xs)(Nil)
 
@@ -515,6 +518,8 @@ object BMap extends BMaps {
   object Tip {
     def apply[K, V]: BMap[K, V] = new BMap[K, V] {
       def fold[R](empty: => R, nonempty: (Int, K, V, BMap[K, V], BMap[K, V]) => R) = empty
+
+      override def toString = "<tip>"
     }
 
     def unapply[K, V](m: BMap[K, V]): Boolean = m.fold(true, (_, _, _, _, _) => false)
@@ -527,12 +532,14 @@ object BMap extends BMaps {
     def fold[R](empty: => R, nonempty: (Int, K, V, BMap[K, V], BMap[K, V]) => R) = nonempty(s, k, v, left, right)
   }
 
+  implicit def BMapSemigroup[K: Order, V]: Semigroup[BMap[K, V]] =
+     semigroup(a => b => a union b)
 
-   implicit def BMapMonoid[K, V](implicit ss: Semigroup[V]): Monoid[Map[K,V]] = Monoid.monoid
+  implicit def BMapMonoid[K, V](implicit ss: Semigroup[V]): Monoid[Map[K,V]] = Monoid.monoid
 
-   implicit def BMapFunctor[K]: Functor[({type λ[α] = BMap[K, α]})#λ] = new Functor[({type λ[α] = BMap[K, α]})#λ] {
+  implicit def BMapFunctor[K]: Functor[({type λ[α] = BMap[K, α]})#λ] = new Functor[({type λ[α] = BMap[K, α]})#λ] {
      def fmap[A, B](f: A => B) = _ map f
-   }
+  }
 
   implicit def BMapEqual[K: Equal, V: Equal]: Equal[BMap[K, V]] =
     Equal.equalC[BMap[K, V]]((t1, t2) => t1.size == t2.size && (t1.toList == t2.toList))
@@ -540,9 +547,11 @@ object BMap extends BMaps {
   implicit def BMapZero[K, V]: Zero[BMap[K, V]] =
      zero(empty[K, V])
 
+  implicit def BMapFoldr[K]: Foldr[({type λ[α] = BMap[K, α]})#λ] = new Foldr[({type λ[α] = BMap[K, α]})#λ] {
+    def foldr[A, B] = f => z => _.foldr(f)(z)
+  }
+
   implicit def BMapPointed[K: Zero]: Pointed[({type λ[α] = BMap[K, α]})#λ] = new Pointed[({type λ[α] = BMap[K, α]})#λ] {
     def point[A](a: => A) = singleton(implicitly[Zero[K]].zero, a)
   }
 }
-
-
