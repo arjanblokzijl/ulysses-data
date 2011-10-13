@@ -388,37 +388,6 @@ sealed trait BMap[K, V] {
     go(this)
   }
 
-
-
-//  {--------------------------------------------------------------------
-//  Lists
-//  use [foldlStrict] to reduce demand on the control-stack
-//--------------------------------------------------------------------}
-//-- | /O(n*log n)/. Build a map from a list of key\/value pairs. See also 'fromAscList'.
-//-- If the list contains more than one value for the same key, the last value
-//-- for the key is retained.
-//--
-//-- > fromList [] == empty
-//-- > fromList [(5,"a"), (3,"b"), (5, "c")] == fromList [(5,"c"), (3,"b")]
-//-- > fromList [(5,"c"), (3,"b"), (5, "a")] == fromList [(5,"a"), (3,"b")]
-//
-//fromList :: Ord k => [(k,a)] -> Map k a
-//fromList xs
-//  = foldlStrict ins empty xs
-//  where
-//    ins t (k,x) = insert k x t
-
-//  -- | /O(n)/. Fold the values in the map, such that
-//-- @'fold' f z == 'Prelude.foldr' f z . 'elems'@.
-//-- For example,
-//--
-//-- > elems map = fold (:) [] map
-//--
-//-- > let f a len = len + (length a)
-//-- > fold f 0 (fromList [(5,"a"), (3,"bbb")]) == 4
-//fold :: (a -> b -> b) -> b -> Map k a -> b
-//fold f = foldWithKey (\_ x' z' -> f x' z')
-
   def fold[B](f: V => B => B)(b: B): B = foldrWithKey(_ => f)(b)
 
   def foldrWithKey[B](f: K => V => B => B)(b: B): B = {
@@ -542,7 +511,7 @@ object BMap extends BMaps {
 
   def empty[K, V]: BMap[K, V] = Tip[K, V]
 
-  /**The empty heap */
+  /**The empty map */
   object Tip {
     def apply[K, V]: BMap[K, V] = new BMap[K, V] {
       def fold[R](empty: => R, nonempty: (Int, K, V, BMap[K, V], BMap[K, V]) => R) = empty
@@ -553,15 +522,11 @@ object BMap extends BMaps {
 
   def bin[K, V](k: K, v: V, l: BMap[K, V], r: BMap[K, V]): BMap[K, V] = Bin(l.size + r.size + 1, k, v, l, r)
 
-//  case class Tip[K, V]() extends BMap[K, V]
 
   case class Bin[K, V](s: Int, k: K, v: V, left: BMap[K, V], right: BMap[K, V]) extends BMap[K, V] {
     def fold[R](empty: => R, nonempty: (Int, K, V, BMap[K, V], BMap[K, V]) => R) = nonempty(s, k, v, left, right)
   }
 
-//  implicit def MapShow[K: Show, V: Show]: Show[BMap[K, V]] =
-//    Show.show((m: BMap[K, V]) => ""
-//      '{' :: implicitly[Show[A]].show(t.rootLabel) ++ " " ++ implicitly[Show[Stream[Tree[A]]]].show(t.subForest) ++ "}")
 
    implicit def BMapMonoid[K, V](implicit ss: Semigroup[V]): Monoid[Map[K,V]] = Monoid.monoid
 
@@ -572,10 +537,12 @@ object BMap extends BMaps {
   implicit def BMapEqual[K: Equal, V: Equal]: Equal[BMap[K, V]] =
     Equal.equalC[BMap[K, V]]((t1, t2) => t1.size == t2.size && (t1.toList == t2.toList))
 
+  implicit def BMapZero[K, V]: Zero[BMap[K, V]] =
+     zero(empty[K, V])
 
-//instance (Show k, Show a) => Show (Map k a) where
-//  showsPrec d m  = showParen (d > 10) $
-//    showString "fromList " . shows (toList m)
+  implicit def BMapPointed[K: Zero]: Pointed[({type λ[α] = BMap[K, α]})#λ] = new Pointed[({type λ[α] = BMap[K, α]})#λ] {
+    def point[A](a: => A) = singleton(implicitly[Zero[K]].zero, a)
+  }
 }
 
 

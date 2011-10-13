@@ -38,12 +38,6 @@ object BMapPerf {
         }
      }
      println("Finished inserting %s elements in the scala map at %s".format(sample, new Date))
-     val res1 = bmapOp._2
-     val res2 = scalaMapOp._2
-//     println("Bmap: inserting took %s nanos".format(res1.nanos))
-//     println("Bmap took %s seconds".format(res1.nanos / 1000000))
-//     println("ScalaMap: took %s nanos".format(res2.nanos))
-//     println("ScalaMap: took %s seconds".format(res2.nanos / 1000000))
 
      bmapOp compare scalaMapOp
      var total = ""
@@ -51,7 +45,7 @@ object BMapPerf {
        var i = 0
        while (i < indexes.length) {
          val result = bMap.lookup(i.toString)
-
+         total = result.getOrElse("")
          i += 1
        }
      }

@@ -7,7 +7,7 @@ package org.ulysses.perf
 object PerfLib {
   @inline
   def time(op: =>Unit) = {
-    var data = new Array[Test](12)
+    var data = new Array[Test](20)
 
     var minTime = Long.MaxValue
     var minMem = Long.MaxValue
@@ -16,8 +16,8 @@ object PerfLib {
 
     var maxTime = Long.MinValue
     var maxMem = Long.MinValue
-    var maxTimeI = 1
-    var maxMemI = 1
+    var maxTimeI = 4
+    var maxMemI = 4
 
     for (i <- 0 until data.length) {
       val mem = Runtime.getRuntime.freeMemory
@@ -49,16 +49,23 @@ object PerfLib {
     var sumTime: BigInt = 0
     var sumMem: BigInt = 0
     for (i <- 0 until data.length) {
-      if (i != minTimeI && i != maxTimeI) {
+//      if (i != minTimeI && i != maxTimeI) {
+//        sumTime += data(i).nanos
+//      }
+//
+//      if (i != minMemI && i != maxMemI) {
+//        sumMem += data(i).bytes
+//      }
+      if (i > maxTimeI) {
         sumTime += data(i).nanos
       }
 
-      if (i != minMemI && i != maxMemI) {
+      if (i > maxTimeI) {
         sumMem += data(i).bytes
       }
     }
-
-    Test((sumTime / (data.length - 2)).longValue, (sumMem / (data.length - 2)).longValue)
+    val ignored = maxTimeI + 1 //first runs are for warming up
+    Test((sumTime / (data.length - ignored)).longValue, (sumMem / (data.length - ignored)).longValue)
   }
 
   def title(str: String) {
@@ -85,7 +92,7 @@ object PerfLib {
     private val percentTemplate = "%%%ds: %%%%f%%%%%%%%%n"
 
     def compare(op2: (String, Test)) {
-      import Math.max
+      import math.max
 
       val (op1Name, Test(op1Time, op1Mem)) = op1
       val (op2Name, Test(op2Time, op2Mem)) = op2
@@ -96,11 +103,13 @@ object PerfLib {
       val timeWidth:java.lang.Integer = widthTotal - 5
       val memWidth:java.lang.Integer = widthTotal - 7
 
-      val timeFormat = String.format(timeTemplate, timeWidth)
-      val memoryFormat = String.format(memoryTemplate, memWidth)
-      val diffFormat = String.format(String.format(diffTemplate, width), diff, "ms")
-      val memDiffFormat = String.format(String.format(diffTemplate, width), memDiff, " KB")
-      val percentFormat = String.format(String.format(percentTemplate, width), percent)
+      //      val timeFormat = String.format(timeTemplate, timeWidth)
+//      val memoryFormat = String.format(memoryTemplate, memWidth)
+      val timeFormat = timeTemplate.format(timeWidth)
+      val memoryFormat = memoryTemplate.format(memWidth)
+      val diffFormat = String.format(diffTemplate.format(width), diff, "ms")
+      val memDiffFormat = String.format(diffTemplate.format(width), memDiff, " KB")
+      val percentFormat = String.format(percentTemplate.format(width), percent)
 
       div('-')
 
