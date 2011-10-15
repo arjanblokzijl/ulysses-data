@@ -7,7 +7,7 @@ import Scalaz._
  * A port of haskell's Data.Map based on a size balanced tree.
  * @see http://haskell.org/ghc/docs/latest/html/libraries/containers-0.4.1.0/Data-Map.html
  */
-sealed trait BMap[K, V] {
+sealed trait BMap[K, A] {
 
   import BMap._
 
@@ -15,7 +15,7 @@ sealed trait BMap[K, V] {
 
   def showString(s: String): String = s
 
-  def fold[R](empty: => R, nonempty: (Int, K, V, BMap[K, V], BMap[K, V]) => R): R
+  def fold[R](empty: => R, nonempty: (Int, K, A, BMap[K, A], BMap[K, A]) => R): R
 
   /**
    * O(1). Is the map empty?
@@ -32,7 +32,7 @@ sealed trait BMap[K, V] {
   /**
    * O(log(n)) lookup the value with the corresponding key in the map.
    */
-  def lookup(key: K)(implicit o: Order[K]): Option[V] = this match {
+  def lookup(key: K)(implicit o: Order[K]): Option[A] = this match {
     case Tip() => None
     case Bin(_, k, v, l, r) => {
       if (o.isLT(key)(k)) l.lookup(key)(o)
@@ -41,7 +41,7 @@ sealed trait BMap[K, V] {
     }
   }
 
-  def lookupAssoc(key: K)(implicit o: Order[K]): Option[(K, V)] = this match {
+  def lookupAssoc(key: K)(implicit o: Order[K]): Option[(K, A)] = this match {
     case Tip() => None
     case Bin(_, k, v, l, r) => {
       if (o.isLT(key)(k)) l.lookupAssoc(key)(o)
@@ -57,20 +57,20 @@ sealed trait BMap[K, V] {
   /**
    * Finds the value associated with the given key K in the map. Throws an exception if the key is not present.
    */
-  def find(k: K)(implicit o: Order[K]): V = lookup(k).fold(identity, sys.error("BMap.find: element not in the map"))
+  def find(k: K)(implicit o: Order[K]): A = lookup(k).fold(identity, sys.error("BMap.find: element not in the map"))
 
   /**
    * O(log n)
    * Finds the value associated with the given key K in the map, returns the given default value if the key is not present.
    */
-  def findWithDefault(v: V, k: K)(implicit o: Order[K]): V = lookup(k)(o).fold(identity, v)
+  def findWithDefault(v: A, k: K)(implicit o: Order[K]): A = lookup(k)(o).fold(identity, v)
 
   /**
    * O(log n). Inserts the given key value pair in the map. If the key is already present, the value associated with
    * the key will be overwritten with the new value.
    */
-  def insert(kx: K, x: V)(implicit o: Order[K]): BMap[K, V] = {
-    def go(m: BMap[K, V]): BMap[K, V] = m match {
+  def insert(kx: K, x: A)(implicit o: Order[K]): BMap[K, A] = {
+    def go(m: BMap[K, A]): BMap[K, A] = m match {
       case Tip() => singleton(kx, x)
       case Bin(sy, ky, y, l, r) => {
         if (o.isLT(kx)(ky)) balance(ky, y, (go(l)), r)
@@ -81,10 +81,10 @@ sealed trait BMap[K, V] {
     go(this)
   }
 
-  def insertWith(fx: V => V => V, kx: K, x: V)(implicit o: Order[K]): BMap[K, V] = insertWithKey(_ => fx, kx, x)(o)
+  def insertWith(fx: A => A => A, kx: K, x: A)(implicit o: Order[K]): BMap[K, A] = insertWithKey(_ => fx, kx, x)(o)
 
-  def insertWithKey(f: K => V => V => V, kx: K, x: V)(implicit o: Order[K]): BMap[K, V] = {
-    def go(m: BMap[K, V]): BMap[K, V] = m match {
+  def insertWithKey(f: K => A => A => A, kx: K, x: A)(implicit o: Order[K]): BMap[K, A] = {
+    def go(m: BMap[K, A]): BMap[K, A] = m match {
       case Tip() => singleton(kx, x)
       case Bin(sy, ky, y, l, r) => {
         if (o.isLT(kx)(ky)) balance(ky, y, go(l), r)
@@ -95,8 +95,8 @@ sealed trait BMap[K, V] {
     go(this)
   }
 
-  def insertLookupWithKey(f: K => V => V => V, kx: K, x: V)(implicit o: Order[K]): (Option[V], BMap[K, V]) = {
-    def go(m: BMap[K, V]): (Option[V], BMap[K, V]) = m match {
+  def insertLookupWithKey(f: K => A => A => A, kx: K, x: A)(implicit o: Order[K]): (Option[A], BMap[K, A]) = {
+    def go(m: BMap[K, A]): (Option[A], BMap[K, A]) = m match {
       case Tip() => (None, singleton(kx, x))
       case Bin(sy, ky, y, l, r) => {
         if (o.isLT(kx)(ky)) {
@@ -114,9 +114,9 @@ sealed trait BMap[K, V] {
     go(this)
   }
 
-  def delete(k: K)(implicit o: Order[K]): BMap[K, V] = {
-    def go(m: BMap[K, V]): BMap[K, V] = m match {
-      case Tip() => Tip[K, V]
+  def delete(k: K)(implicit o: Order[K]): BMap[K, A] = {
+    def go(m: BMap[K, A]): BMap[K, A] = m match {
+      case Tip() => Tip[K, A]
       case Bin(_, kx, x, l, r) => {
         if (o.isLT(k)(kx)) balance(kx, x, (go(l)), r)
         else if (o.isGT(k)(kx)) balance(kx, x, l, (go(r)))
@@ -127,28 +127,28 @@ sealed trait BMap[K, V] {
   }
 
 
-  def adjust(v: V => V, k: K)(implicit o: Order[K]): BMap[K, V] = adjustWithKey(_ => v)(k)
+  def adjust(v: A => A, k: K)(implicit o: Order[K]): BMap[K, A] = adjustWithKey(_ => v)(k)
 
   /**
    * O(log n). Adjust a value with a specific key. When the key is not a memeber of the map,
    * the original map is returned.
    */
-  def adjustWithKey(f: K => V => V)(k: K)(implicit o: Order[K]): BMap[K, V] = updateWithKey(k1 => v1 => Some(f(k1)(v1)))(k)
+  def adjustWithKey(f: K => A => A)(k: K)(implicit o: Order[K]): BMap[K, A] = updateWithKey(k1 => v1 => Some(f(k1)(v1)))(k)
 
   /**
    * O(log n)/. The expression update(f, k) updates the value x if the given key is in the map.
    * If f(v) is None, the element is deleted. If it is Some(y) the key k is bound to the new value y.
    */
-  def update(f: V => Option[V], k: K)(implicit o: Order[K]) : BMap[K, V] = updateWithKey(_ => x => f(x))(k)
+  def update(f: A => Option[A], k: K)(implicit o: Order[K]) : BMap[K, A] = updateWithKey(_ => x => f(x))(k)
   
   /**
    * O(log n). The expression ('updateWithKey' f k map) updates the
    * value v at k (if it is in the map). If (f k v) is 'None',
    * the element is deleted. If it is Some(y) the key k is bound to the new value y.
    */
-  def updateWithKey(f: K => V => Option[V])(k: K)(implicit o: Order[K]): BMap[K, V] = {
-    def go(m : BMap[K, V]): BMap[K, V] = m match {
-      case Tip() => empty[K, V]
+  def updateWithKey(f: K => A => Option[A])(k: K)(implicit o: Order[K]): BMap[K, A] = {
+    def go(m : BMap[K, A]): BMap[K, A] = m match {
+      case Tip() => empty[K, A]
       case Bin(sx, kx, x, l, r) => o.order(k)(kx) match {
         case LT => balance(kx, x, go(l), r)
         case GT => balance(kx, x, l, go(r))
@@ -164,9 +164,9 @@ sealed trait BMap[K, V] {
    * Returns the original key value if the map entry is deleted.
    * @see updateWithKey
    */
-  def updateLookupWithKey(f: K => V => Option[V])(k: K)(implicit o: Order[K]): (Option[V], BMap[K, V]) = {
-    def go(m : BMap[K, V]): (Option[V], BMap[K, V]) = m match {
-      case Tip() => (None, empty[K, V])
+  def updateLookupWithKey(f: K => A => Option[A])(k: K)(implicit o: Order[K]): (Option[A], BMap[K, A]) = {
+    def go(m : BMap[K, A]): (Option[A], BMap[K, A]) = m match {
+      case Tip() => (None, empty[K, A])
       case Bin(sx, kx, x, l, r) => o.order(k)(kx) match {
         case LT => {
           val (found, l1) = go(l)
@@ -187,8 +187,8 @@ sealed trait BMap[K, V] {
    * 'alter' can be used to insert, delete or update a value in a Map.
    * In short: m lookup(k)(alter(f)(k) = f(m lookup(k))
    */
-  def alter(f: Option[V] => Option[V])(k: K)(implicit o: Order[K]): BMap[K, V] = {
-     def go(m: BMap[K, V]): BMap[K, V] = m match {
+  def alter(f: Option[A] => Option[A])(k: K)(implicit o: Order[K]): BMap[K, A] = {
+     def go(m: BMap[K, A]): BMap[K, A] = m match {
        case Tip() => f(None) match {
          case None => empty
          case Some(x) => singleton(k, x)
@@ -205,7 +205,7 @@ sealed trait BMap[K, V] {
      go(this)
   }
 
-  def glue(left: BMap[K, V], right: BMap[K, V]): BMap[K, V] = (left, right) match {
+  def glue(left: BMap[K, A], right: BMap[K, A]): BMap[K, A] = (left, right) match {
     case (Tip(), r) => r
     case (l, Tip()) => l
     case (l, r) => {
@@ -220,9 +220,9 @@ sealed trait BMap[K, V] {
     }
   }
 
-  def deleteFindMin: ((K, V), BMap[K, V]) = deleteFindMinWith(this)
+  def deleteFindMin: ((K, A), BMap[K, A]) = deleteFindMinWith(this)
 
-  private def deleteFindMinWith(m: BMap[K, V]): ((K, V), BMap[K, V]) = m match {
+  private def deleteFindMinWith(m: BMap[K, A]): ((K, A), BMap[K, A]) = m match {
     case Bin(_, k, x, Tip(), r) => ((k, x), r)
     case Bin(_, k, x, l, r) => {
       val (km, ll) = deleteFindMinWith(l)
@@ -231,9 +231,9 @@ sealed trait BMap[K, V] {
     case Tip() => sys.error("Map.deleteFindMin: can not return the minimal element of an empty map Tip")
   }
 
-  def deleteFindMax: ((K, V), BMap[K, V]) = deleteFindMaxWith(this)
+  def deleteFindMax: ((K, A), BMap[K, A]) = deleteFindMaxWith(this)
 
-  private def deleteFindMaxWith(m: BMap[K, V]): ((K, V), BMap[K, V]) = m match {
+  private def deleteFindMaxWith(m: BMap[K, A]): ((K, A), BMap[K, A]) = m match {
     case Bin(_, k, x, l, Tip()) => ((k, x), l)
     case Bin(_, k, x, l, r) => {
       val (km, rr) = deleteFindMaxWith(r)
@@ -242,12 +242,12 @@ sealed trait BMap[K, V] {
     case Tip() => sys.error("Map.deleteFindMax: can not return the minimal element of an empty map Tip")
   }
 
-  def updateMin(f: V => Option[V]): BMap[K, V] = {
+  def updateMin(f: A => Option[A]): BMap[K, A] = {
     updateMinWithKey(_ => f)
   }
 
-  def updateMinWithKey(f: K => V => Option[V]): BMap[K, V] = {
-    def go(m: BMap[K, V]): BMap[K, V] = m match {
+  def updateMinWithKey(f: K => A => Option[A]): BMap[K, A] = {
+    def go(m: BMap[K, A]): BMap[K, A] = m match {
       case Tip() => empty
       case Bin(sx, kx, x, Tip(), r) => f(kx)(x) match {
         case None => r
@@ -258,12 +258,12 @@ sealed trait BMap[K, V] {
     go(this)
   }
 
-  def updateMax(f: V => Option[V]): BMap[K, V] = {
+  def updateMax(f: A => Option[A]): BMap[K, A] = {
     updateMaxWithKey(_ => f)
   }
 
-  def updateMaxWithKey(f: K => V => Option[V]): BMap[K, V] = {
-    def go(m: BMap[K, V]): BMap[K, V] = m match {
+  def updateMaxWithKey(f: K => A => Option[A]): BMap[K, A] = {
+    def go(m: BMap[K, A]): BMap[K, A] = m match {
       case Tip() => empty
       case Bin(sx, kx, x, l, Tip()) => f(kx)(x) match {
         case None => l
@@ -274,17 +274,17 @@ sealed trait BMap[K, V] {
     go(this)
   }
 
-  def minViewWithKey: Option[((K, V), BMap[K, V])] = this match {
+  def minViewWithKey: Option[((K, A), BMap[K, A])] = this match {
     case Tip() => None
     case _ => Some(deleteFindMin)
   }
 
-  def maxViewWithKey: Option[((K, V), BMap[K, V])] = this match {
+  def maxViewWithKey: Option[((K, A), BMap[K, A])] = this match {
     case Tip() => None
     case _ => Some(deleteFindMax)
   }
 
-  def minView: Option[(V, BMap[K, V])] = this match {
+  def minView: Option[(A, BMap[K, A])] = this match {
     case Tip() => None
     case _ => {
       val ((kx, x), m) = deleteFindMin
@@ -292,7 +292,7 @@ sealed trait BMap[K, V] {
     }
   }
 
-  def maxView: Option[(V, BMap[K, V])] = this match {
+  def maxView: Option[(A, BMap[K, A])] = this match {
     case Tip() => None
     case _ => {
       val ((kx, x), m) = deleteFindMax
@@ -300,19 +300,24 @@ sealed trait BMap[K, V] {
     }
   }
 
+  def unions[B](ts: List[BMap[K, B]])(implicit o: Order[K]): BMap[K, B] = {
+    ts.foldLeft(empty[K, B])((a, b) => b.union(a))
+  }
+
+
   /**
    * O(n+m).
    * The expression t1.union(t2) takes the left-biased union of t1 and t2, preferring t1 when duplicate keys are encountered.
    * The implementation uses the efficient hedge-union algorithm.
    * Hedge-union is more efficient on (bigset \``union`\` smallset).
    */
-  def union(m: BMap[K, V])(implicit o: Order[K]): BMap[K, V] = (this, m) match {
+  def union(m: BMap[K, A])(implicit o: Order[K]): BMap[K, A] = (this, m) match {
     case (Tip(), t2) => t2
     case (t1, Tip()) => t1
     case (t1, t2) => hedgeUnionL(_ => LT, _ => GT, t1, t2)
   }
 
-  def hedgeUnionL(k1: K => Ordering, k2: K => Ordering, m1: BMap[K, V], m2: BMap[K, V])(implicit o: Order[K]): BMap[K,V] = (k1, k2, m1, m2) match {
+  def hedgeUnionL(k1: K => Ordering, k2: K => Ordering, m1: BMap[K, A], m2: BMap[K, A])(implicit o: Order[K]): BMap[K,A] = (k1, k2, m1, m2) match {
     case (_, _,t1, Tip()) => t1
     case (cmplo, cmphi, Tip(), Bin(_, kx, x, l, r)) => join(kx, x, filterGt(cmplo, l), filterLt(cmphi, r))
     case (cmplo, cmphi, Bin(_, kx, x, l, r), t2) => {
@@ -321,7 +326,7 @@ sealed trait BMap[K, V] {
     }
   }
 
-  def hedgeUnionWithKey(k1: K => V => V => V)(k2: K => Ordering)(k3: K => Ordering)(m1: BMap[K, V])(m2: BMap[K,V])(implicit o: Order[K]) : BMap[K, V] =
+  def hedgeUnionWithKey(k1: K => A => A => A)(k2: K => Ordering)(k3: K => Ordering)(m1: BMap[K, A])(m2: BMap[K,A])(implicit o: Order[K]) : BMap[K, A] =
     (k1, k2, k3, m1, m2) match {
       case (_, _, _, t1, Tip()) => t1
       case (_, cmplo, cmphi, Tip(), Bin(_, kx, x, l, r)) => join(kx, x, (filterGt(cmplo, l)), filterLt(cmphi, r))
@@ -334,7 +339,7 @@ sealed trait BMap[K, V] {
     }
   }
 
-  def trim(k1: K => Ordering, k2: K => Ordering, m: BMap[K, V]): BMap[K, V] = (k1, k2, m) match {
+  def trim(k1: K => Ordering, k2: K => Ordering, m: BMap[K, A]): BMap[K, A] = (k1, k2, m) match {
     case (_, _, Tip()) => empty
     case (cmplo, cmphi, t@Bin(_, kx, _, l, r)) => cmplo(kx) match {
       case LT => cmphi(kx) match {
@@ -345,7 +350,7 @@ sealed trait BMap[K, V] {
     }
   }
 
-  def trimLookupLo(k1: K, k2: K => Ordering, m: BMap[K, V])(implicit o: Order[K]): (Option[(K, V)], BMap[K, V]) = (k1, k2, m) match {
+  def trimLookupLo(k1: K, k2: K => Ordering, m: BMap[K, A])(implicit o: Order[K]): (Option[(K, A)], BMap[K, A]) = (k1, k2, m) match {
     case (_, _, Tip()) => (None, empty)
     case (lo, cmphi, t@Bin(_, kx, x, l, r)) => o.order(lo)(kx) match {
       case LT => cmphi(kx) match {
@@ -357,7 +362,7 @@ sealed trait BMap[K, V] {
     }
   }
 
-  def join(kx: K, x: V, m1: BMap[K, V], m2: BMap[K, V])(implicit o: Order[K]): BMap[K, V] = (m1, m2) match {
+  def join(kx: K, x: A, m1: BMap[K, A], m2: BMap[K, A])(implicit o: Order[K]): BMap[K, A] = (m1, m2) match {
     case (Tip(), r) => insertMin(kx, x, r)
     case (l, Tip()) => insertMax(kx, x, l)
     case (l@Bin(sizeL, ky, y, ly, ry), r@Bin(sizeR, kz, z, lz, rz)) => {
@@ -367,18 +372,18 @@ sealed trait BMap[K, V] {
     }
   }
 
-  def insertMin(kx: K, x: V, m: BMap[K, V]): BMap[K, V] = m match {
+  def insertMin(kx: K, x: A, m: BMap[K, A]): BMap[K, A] = m match {
       case Tip() => singleton(kx, x)
       case Bin(_, ky, y, l, r) => balance(ky, y, (insertMin(kx, x, l)), r)
   }
 
-  def insertMax(kx: K, x: V, m: BMap[K, V]): BMap[K, V] = m match {
+  def insertMax(kx: K, x: A, m: BMap[K, A]): BMap[K, A] = m match {
       case Tip() => singleton(kx, x)
       case Bin(_, ky, y, l, r) => balance(ky, y, l, (insertMax(kx, x, r)))
   }
 
-  def filterGt(cmp: K => Ordering, m: BMap[K, V])(implicit o: Order[K]): BMap[K, V] = {
-    def go(m: BMap[K, V]): BMap[K, V] = m match {
+  def filterGt(cmp: K => Ordering, m: BMap[K, A])(implicit o: Order[K]): BMap[K, A] = {
+    def go(m: BMap[K, A]): BMap[K, A] = m match {
       case Tip() => empty
       case Bin(_, kx, x, l, r) => cmp(kx) match {
         case LT => join(kx, x, go(l), r)
@@ -389,8 +394,8 @@ sealed trait BMap[K, V] {
     go(m)
   }
 
-  def filterLt(cmp: K => Ordering, m: BMap[K, V])(implicit o: Order[K]): BMap[K, V] = {
-    def go(m: BMap[K, V]): BMap[K, V] = m match {
+  def filterLt(cmp: K => Ordering, m: BMap[K, A])(implicit o: Order[K]): BMap[K, A] = {
+    def go(m: BMap[K, A]): BMap[K, A] = m match {
       case Tip() => empty
       case Bin(_, kx, x, l, r) => cmp(kx) match {
         case LT => go(l) join(kx, x, go(l), r)
@@ -401,74 +406,79 @@ sealed trait BMap[K, V] {
     go(m)
   }
 
-  def map[B](f: V => B): BMap[K, B] = mapWithKey(_ => f)
+  def map[B](f: A => B): BMap[K, B] = mapWithKey(_ => f)
 
-  def mapWithKey[B](f: K => V => B): BMap[K, B] = {
-    def go(m: BMap[K, V]): BMap[K, B] = m match {
+  def mapWithKey[B](f: K => A => B): BMap[K, B] = {
+    def go(m: BMap[K, A]): BMap[K, B] = m match {
       case Tip() => empty
       case Bin(sx, kx, x, l, r) => Bin(sx, kx, f(kx)(x), go(l), go(r))
     }
     go(this)
   }
+//
+  def flatMap[B](f: A => BMap[K, B])(implicit o: Order[K]): BMap[K, B] = flatMapWithKey(_ => f)
 
-  def flatMap[B](f: V => BMap[K, B]): BMap[K, B] = flatMapWithKey(_ => f)
-
-  def flatMapWithKey[B](f: K => V => BMap[K, B]): BMap[K, B] = {
-    def go(m: BMap[K, V]): BMap[K, B] = m match {
+  def flatMapWithKey[B](f: K => A => BMap[K, B])(implicit o: Order[K]): BMap[K, B] = {
+    def go(m: BMap[K, A]): BMap[K, B] = m match {
       case Tip() => empty
-      case Bin(sx, kx, x, l, r) => Bin(sx, kx, f(kx)(x), go(l), go(r))
+      case Bin(sx, kx, x, l, r) => {
+        val maps = List(f(kx)(x), go(l), go(r))
+        unions(maps)
+      }
     }
     go(this)
   }
 
-  def foldr[B](f: V => (=> B) => B)(b: B): B = foldrWithKey(_ => f)(b)
+  def foldr[B](f: A => (=> B) => B)(b: B): B = foldrWithKey(_ => f)(b)
 
-  def foldrWithKey[B](f: K => V => (=> B) => B)(b: B): B = {
-    def go(z: B, m: BMap[K, V]): B = (z, m) match {
+  def foldrWithKey[B](f: K => A => (=> B) => B)(b: B): B = {
+    def go(z: B, m: BMap[K, A]): B = (z, m) match {
       case (z, Tip()) => z
       case (z, Bin(_, kx, x, l, r)) => go(f(kx)(x)(go(z, r)), l)
     }
     go(b, this)
   }
 
+  def foldl[B](f: B => (=> A) => B)(b: B): B = foldlWithKey(_ => f)(b)
+
   /**
    * O(n). Pre-order fold. The function will be applied from the highest value to the lowest. 
    */
-  def foldlWithKey[B](f: B => K => V => B)(b: B): B = {
-    def go(z: B, m: BMap[K, V]): B = (z, m) match {
+  def foldlWithKey[B](f: K => B => (=> A) => B)(b: B): B = {
+    def go(z: B, m: BMap[K, A]): B = (z, m) match {
       case (z, Tip()) => z
-      case (z, Bin(_, kx, x, l, r)) => go(f(go(z, l))(kx)(x), r)
+      case (z, Bin(_, kx, x, l, r)) => go(f(kx)(go(z, l))(x), r)
     }
     go(b, this)
   }
 
-  def toStream: Stream[(K, V)] = foldrWithKey[Stream[(K, V)]](k => x => xs => Stream.cons((k, x), xs))(Stream())
+  def toStream: Stream[(K, A)] = foldrWithKey[Stream[(K, A)]](k => x => xs => Stream.cons((k, x), xs))(Stream())
 
-  def toUnsortedList: List[(K, V)] = toStream.toList
+  def toUnsortedList: List[(K, A)] = toStream.toList
 
-  def toList: List[(K, V)] = toAscList
+  def toList: List[(K, A)] = toAscList
 
 //  import wrap.StreamW._
 //  def toStream: String[(K, V)] = foldrWithKey(Stream[(K, V)])(k => x => xs => (k,x))
 
-  def toAscList: List[(K, V)] = foldrWithKey[List[(K, V)]](k => x => xs => (k, x) :: xs)(Nil)
+  def toAscList: List[(K, A)] = foldrWithKey[List[(K, A)]](k => x => xs => (k, x) :: xs)(Nil)
 
-  def toDescList: List[(K, V)] = foldlWithKey[List[(K, V)]](xs => k => x => (k, x) :: xs)(Nil)
+  def toDescList: List[(K, A)] = foldlWithKey[List[(K, A)]](k => xs => x => (k, x) :: xs)(Nil)
 
   //debugging /- printing the map
   def showTree: String = showTreeWith(k => v => k.toString ++ ":=" ++ v.toString, true, true)
 
-  def showTreeWith(showelem: K => V => String, hang: Boolean, wide: Boolean): String = {
+  def showTreeWith(showelem: K => A => String, hang: Boolean, wide: Boolean): String = {
     if (hang) showsTreeHang(showelem, wide, List(), this)
     else showsTreeHang(showelem, wide, List(), this)//TODO obviously...
   }
 
-  def showsTree(showelem: K => V => String, wide: Boolean, lbars: List[String], rbars: List[String], t: BMap[K, V]): String = t match {
+  def showsTree(showelem: K => A => String, wide: Boolean, lbars: List[String], rbars: List[String], t: BMap[K, A]): String = t match {
     case Tip() => showsBars(lbars)
     case _ => ""
   }
 
-  def showsTreeHang(showelem: K => V => String, wide: Boolean, bars: List[String], t: BMap[K, V]): String = t match {
+  def showsTreeHang(showelem: K => A => String, wide: Boolean, bars: List[String], t: BMap[K, A]): String = t match {
     case Tip() => showsBars(bars) ++ "|\n"
     case Bin(_, kx, x, Tip(), Tip()) => showsBars(bars) ++ showelem(kx)(x) ++ "\n"
     case Bin(_, kx, x, l, r) => {
@@ -494,7 +504,7 @@ sealed trait BMap[K, V] {
   private def withEmpty(bars: List[String]): List[String] = "  " :: bars
 
 
-  private def balance(k: K, v: V, l: BMap[K, V], r: BMap[K, V]): BMap[K, V] = {
+  private def balance(k: K, v: A, l: BMap[K, A], r: BMap[K, A]): BMap[K, A] = {
     val sizeL = l.size
     val sizeR = r.size
     val sizeX = sizeL + sizeR + 1
@@ -504,34 +514,34 @@ sealed trait BMap[K, V] {
     else Bin(sizeX, k, v, l, r)
   }
 
-  private def rotateL(k: K, v: V, l: BMap[K, V], r: BMap[K, V]): BMap[K, V] = r match {
+  private def rotateL(k: K, v: A, l: BMap[K, A], r: BMap[K, A]): BMap[K, A] = r match {
     case Bin(_, _, _, ly, ry) if (ly.size < ratio * ry.size) => singleL(k, v, l, r)
     case Bin(_, _, _, ly, ry) => doubleL(k, v, l, r)
     case Tip() => sys.error("rotateL tip")
   }
 
-  private def singleL(k1: K, v1: V, l1: BMap[K, V], r2: BMap[K, V]): BMap[K, V] = r2 match {
+  private def singleL(k1: K, v1: A, l1: BMap[K, A], r2: BMap[K, A]): BMap[K, A] = r2 match {
     case Bin(_, k2, v2, l2, r2) => bin(k2, v2, bin(k1, v1, l1, l2), r2)
     case Tip() => sys.error("singleL Tip")
   }
 
-  private def doubleL(k1: K, x1: V, t1: BMap[K, V], b: BMap[K, V]): BMap[K, V] = b match {
+  private def doubleL(k1: K, x1: A, t1: BMap[K, A], b: BMap[K, A]): BMap[K, A] = b match {
     case Bin(_, k2, x2, Bin(_, k3, x3, t2, t3), t4) => bin(k3, x3, bin(k1, x1, t1, t2), bin(k2, x2, t3, t4))
     case _ => sys.error("doubleL")
   }
 
-  private def rotateR(k: K, v: V, l: BMap[K, V], r: BMap[K, V]): BMap[K, V] = l match {
+  private def rotateR(k: K, v: A, l: BMap[K, A], r: BMap[K, A]): BMap[K, A] = l match {
     case Bin(_, _, _, ly, ry) if (ry.size < ratio * ly.size) => singleR(k, v, l, r)
     case Bin(_, _, _, ly, ry) => doubleR(k, v, l, r)
     case Tip() => sys.error("rotateL tip")
   }
 
-  private def singleR(k1: K, x1: V, b: BMap[K, V], t3: BMap[K, V]): BMap[K, V] = b match {
+  private def singleR(k1: K, x1: A, b: BMap[K, A], t3: BMap[K, A]): BMap[K, A] = b match {
     case Bin(_, k2, x2, t1, t2) => bin(k2, x2, t1, bin(k1, x1, t2, t3))
     case Tip() => sys.error("singleR Tip")
   }
 
-  private def doubleR(k1: K, x1: V, b: BMap[K, V], t4: BMap[K, V]): BMap[K, V] = b match {
+  private def doubleR(k1: K, x1: A, b: BMap[K, A], t4: BMap[K, A]): BMap[K, A] = b match {
     case Bin(_, k2, x2, t1, Bin(_, k3, x3, t2, t3)) => bin(k3, x3, bin(k2, x2, t1, t2), bin(k1, x1, t3, t4))
     case _ => sys.error("doubleR")
   }
@@ -592,12 +602,10 @@ object BMap extends BMaps {
     def point[A](a: => A) = singleton(implicitly[Zero[K]].zero, a)
   }
 
-
-
-  implicit def BMapApplic[X]: Applic[({type λ[α] = BMap[X, α]})#λ] =
+  implicit def BMapApplic[X: Order]: Applic[({type λ[α] = BMap[X, α]})#λ] =
     new Applic[({type λ[α] = BMap[X, α]})#λ] {
       def applic[A, B](f: BMap[X, A => B]) =
-        m => f.flatMap (a.right map _)
+        a => f flatMap (a map _)
     }
 
 //  def applic[A, B](f: Tree[A => B]) =
