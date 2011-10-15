@@ -52,12 +52,12 @@ sealed trait BMap[K, V] {
 
   def member(k: K)(implicit o: Order[K]): Boolean = lookup(k)(o).fold(_ => true, false)
 
-  def notMember(k: K)(implicit o: Order[K]): Boolean = !member(k)(o)
+  def notMember(k: K)(implicit o: Order[K]): Boolean = !member(k)
 
   /**
    * Finds the value associated with the given key K in the map. Throws an exception if the key is not present.
    */
-  def find(k: K)(implicit o: Order[K]): V = lookup(k)(o).fold(identity, sys.error("BMap.find: element not in the map"))
+  def find(k: K)(implicit o: Order[K]): V = lookup(k).fold(identity, sys.error("BMap.find: element not in the map"))
 
   /**
    * O(log n)
@@ -181,7 +181,30 @@ sealed trait BMap[K, V] {
     }
     go(this)
   }
-  
+
+  /**
+   * O(log n). The expression m.alter(f)(k) alters the value x at k, or absence thereof.
+   * 'alter' can be used to insert, delete or update a value in a Map.
+   * In short: m lookup(k)(alter(f)(k) = f(m lookup(k))
+   */
+  def alter(f: Option[V] => Option[V])(k: K)(implicit o: Order[K]): BMap[K, V] = {
+     def go(m: BMap[K, V]): BMap[K, V] = m match {
+       case Tip() => f(None) match {
+         case None => empty
+         case Some(x) => singleton(k, x)
+       }
+       case Bin(sx, kx, x, l, r) => o.order(k)(kx) match {
+         case LT => balance(kx, x, go(l), r)
+         case GT => balance(kx, x, l, go(r))
+         case EQ => f(Some(x)) match {
+           case Some(xx) => Bin(sx, kx, xx, l, r)
+           case None => glue(l, r)
+         }
+       }
+     }
+     go(this)
+  }
+
   def glue(left: BMap[K, V], right: BMap[K, V]): BMap[K, V] = (left, right) match {
     case (Tip(), r) => r
     case (l, Tip()) => l
@@ -388,6 +411,16 @@ sealed trait BMap[K, V] {
     go(this)
   }
 
+  def flatMap[B](f: V => BMap[K, B]): BMap[K, B] = flatMapWithKey(_ => f)
+
+  def flatMapWithKey[B](f: K => V => BMap[K, B]): BMap[K, B] = {
+    def go(m: BMap[K, V]): BMap[K, B] = m match {
+      case Tip() => empty
+      case Bin(sx, kx, x, l, r) => Bin(sx, kx, f(kx)(x), go(l), go(r))
+    }
+    go(this)
+  }
+
   def foldr[B](f: V => (=> B) => B)(b: B): B = foldrWithKey(_ => f)(b)
 
   def foldrWithKey[B](f: K => V => (=> B) => B)(b: B): B = {
@@ -408,6 +441,10 @@ sealed trait BMap[K, V] {
     }
     go(b, this)
   }
+
+  def toStream: Stream[(K, V)] = foldrWithKey[Stream[(K, V)]](k => x => xs => Stream.cons((k, x), xs))(Stream())
+
+  def toUnsortedList: List[(K, V)] = toStream.toList
 
   def toList: List[(K, V)] = toAscList
 
@@ -554,4 +591,18 @@ object BMap extends BMaps {
   implicit def BMapPointed[K: Zero]: Pointed[({type λ[α] = BMap[K, α]})#λ] = new Pointed[({type λ[α] = BMap[K, α]})#λ] {
     def point[A](a: => A) = singleton(implicitly[Zero[K]].zero, a)
   }
+
+
+
+  implicit def BMapApplic[X]: Applic[({type λ[α] = BMap[X, α]})#λ] =
+    new Applic[({type λ[α] = BMap[X, α]})#λ] {
+      def applic[A, B](f: BMap[X, A => B]) =
+        m => f.flatMap (a.right map _)
+    }
+
+//  def applic[A, B](f: Tree[A => B]) =
+//    a =>
+//      Tree.node((f.rootLabel)(a.rootLabel), implicitly[Applic[newtypes.ZipStream]].applic(f.subForest.map(applic[A, B](_)).ʐ)(a.subForest ʐ).value)
+
 }
+
