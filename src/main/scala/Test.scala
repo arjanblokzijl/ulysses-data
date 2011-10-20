@@ -24,4 +24,7 @@ object Test {
 //  (a2 ∘ (_ + "x")).runT assert_=== Some(Some("a2x"))
 //  (a3 ∘ (_ + "x")).runT assert_=== Some(None)
 
+  case class AA(i: Int, s: String)
+
+  val a = AA.curried
 }
