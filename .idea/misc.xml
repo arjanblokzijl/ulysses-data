@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="CharacterBrowser">
-    <option name="fontName" value="Monospaced" />
+    <option value="Monospaced" name="fontName" />
   </component>
   <component name="DependencyValidationManager">
     <option name="SKIP_IMPORT_STATEMENTS" value="false" />
@@ -27,7 +27,7 @@
     <option name="OPEN_IN_BROWSER" value="true" />
   </component>
   <component name="ProjectDetails">
-    <option name="projectName" value="ulysses-cat" />
+    <option value="ulysses-cat" name="projectName" />
   </component>
   <component name="ProjectResources">
     <default-html-doctype>http://www.w3.org/1999/xhtml</default-html-doctype>

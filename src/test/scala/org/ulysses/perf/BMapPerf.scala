@@ -3,6 +3,8 @@ package org.ulysses.perf
 import org.ulysses.data.BMap
 import java.util.Date
 import scala.collection.Map
+import scalaz.std
+
 /**
  * User: arjan
  */
@@ -10,6 +12,7 @@ import scala.collection.Map
 object BMapPerf {
   import Perflib._
   import BMap._
+  import std.String._
 
    def main(args: Array[String]) {
      val sample = 100000

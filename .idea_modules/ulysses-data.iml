@@ -9,8 +9,8 @@
     </facet>
   </component>
   <component name="NewModuleRootManager" inherit-compiler-output="false">
-    <output url="file://$MODULE_DIR$/../target/scala-2.9.1.final/classes" />
-    <output-test url="file://$MODULE_DIR$/../target/scala-2.9.1.final/test-classes" />
+    <output url="file://$MODULE_DIR$/../target/scala-2.9.1/classes" />
+    <output-test url="file://$MODULE_DIR$/../target/scala-2.9.1/test-classes" />
     <exclude-output />
     <content url="file://$MODULE_DIR$/..">
       <sourceFolder url="file://$MODULE_DIR$/../src/main/scala" isTestSource="false" />
@@ -24,7 +24,7 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="org.scala-lang_scala-library_2.9.1" level="project" />
-    <orderEntry type="library" name="org.scalaz_scalaz-core_2.9.0-1_7.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="org.scalaz_scalaz-core_2.9.1_7.1-SNAPSHOT" level="project" />
     <orderEntry type="library" scope="TEST" name="org.scala-tools.testing_scalacheck_2.9.1_1.9" level="project" />
     <orderEntry type="library" scope="TEST" name="org.scala-tools.testing_test-interface_0.5" level="project" />
     <orderEntry type="library" scope="TEST" name="org.specs2_specs2_2.9.1_1.6.1" level="project" />

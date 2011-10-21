@@ -1,7 +1,7 @@
 package org.ulysses.data
 
 import scalaz._
-import Scalaz._
+//import Scalaz._
 
 /**
  * A port of haskell's Data.Map based on a size balanced tree.
@@ -35,8 +35,8 @@ sealed trait BMap[K, A] {
   def lookup(key: K)(implicit o: Order[K]): Option[A] = this match {
     case Tip() => None
     case Bin(_, k, v, l, r) => {
-      if (o.isLT(key)(k)) l.lookup(key)(o)
-      else if (o.isGT(key)(k)) r.lookup(key)(o)
+      if (o.lessThan(key, k)) l.lookup(key)(o)
+      else if (o.greaterThan(key, k)) r.lookup(key)(o)
       else Some(v)
     }
   }
@@ -44,26 +44,35 @@ sealed trait BMap[K, A] {
   def lookupAssoc(key: K)(implicit o: Order[K]): Option[(K, A)] = this match {
     case Tip() => None
     case Bin(_, k, v, l, r) => {
-      if (o.isLT(key)(k)) l.lookupAssoc(key)(o)
-      else if (o.isGT(key)(k)) r.lookupAssoc(key)(o)
+      if (o.lessThan(key, k)) l.lookupAssoc(key)(o)
+      else if (o.greaterThan(key, k)) r.lookupAssoc(key)(o)
       else Some((k, v))
     }
   }
 
-  def member(k: K)(implicit o: Order[K]): Boolean = lookup(k)(o).fold(_ => true, false)
+  def member(k: K)(implicit o: Order[K]): Boolean = lookup(k)(o) match {
+    case Some(x) => true
+    case None => false
+  }
 
   def notMember(k: K)(implicit o: Order[K]): Boolean = !member(k)
 
   /**
    * Finds the value associated with the given key K in the map. Throws an exception if the key is not present.
    */
-  def find(k: K)(implicit o: Order[K]): A = lookup(k).fold(identity, sys.error("BMap.find: element not in the map"))
+  def find(k: K)(implicit o: Order[K]): A = lookup(k) match {
+    case Some(x) => x
+    case None => sys.error("BMap.find: element not in the map")
+  }
 
   /**
    * O(log n)
    * Finds the value associated with the given key K in the map, returns the given default value if the key is not present.
    */
-  def findWithDefault(v: A, k: K)(implicit o: Order[K]): A = lookup(k)(o).fold(identity, v)
+  def findWithDefault(v: A, k: K)(implicit o: Order[K]): A = lookup(k)(o) match {
+    case Some(x) => x
+    case None => v
+  }
 
   /**
    * O(log n). Inserts the given key value pair in the map. If the key is already present, the value associated with
@@ -73,8 +82,8 @@ sealed trait BMap[K, A] {
     def go(m: BMap[K, A]): BMap[K, A] = m match {
       case Tip() => singleton(kx, x)
       case Bin(sy, ky, y, l, r) => {
-        if (o.isLT(kx)(ky)) balance(ky, y, (go(l)), r)
-        else if (o.isGT(kx)(ky)) balance(ky, y, l, (go(r)))
+        if (o.lessThan(kx, ky)) balance(ky, y, (go(l)), r)
+        else if (o.greaterThan(kx, ky)) balance(ky, y, l, (go(r)))
         else Bin(sy, kx, x, l, r)
       }
     }
@@ -87,8 +96,8 @@ sealed trait BMap[K, A] {
     def go(m: BMap[K, A]): BMap[K, A] = m match {
       case Tip() => singleton(kx, x)
       case Bin(sy, ky, y, l, r) => {
-        if (o.isLT(kx)(ky)) balance(ky, y, go(l), r)
-        else if (o.isGT(kx)(ky)) balance(ky, y, l, go(r))
+        if (o.lessThan(kx, ky)) balance(ky, y, go(l), r)
+        else if (o.greaterThan(kx, ky)) balance(ky, y, l, go(r))
         else Bin(sy, kx, f(kx)(x)(y), l, r)
       }
     }
@@ -99,11 +108,11 @@ sealed trait BMap[K, A] {
     def go(m: BMap[K, A]): (Option[A], BMap[K, A]) = m match {
       case Tip() => (None, singleton(kx, x))
       case Bin(sy, ky, y, l, r) => {
-        if (o.isLT(kx)(ky)) {
+        if (o.lessThan(kx, ky)) {
           val (found, gol) = go(l)
           (found, balance(ky, y, gol, r))
         }
-        else if (o.isGT(kx)(ky)) {
+        else if (o.greaterThan(kx, ky)) {
           val (found, gor) = go(r)
           (found, balance(ky, y, l, gor))
         }
@@ -118,8 +127,8 @@ sealed trait BMap[K, A] {
     def go(m: BMap[K, A]): BMap[K, A] = m match {
       case Tip() => Tip[K, A]
       case Bin(_, kx, x, l, r) => {
-        if (o.isLT(k)(kx)) balance(kx, x, (go(l)), r)
-        else if (o.isGT(k)(kx)) balance(kx, x, l, (go(r)))
+        if (o.lessThan(k, kx)) balance(kx, x, (go(l)), r)
+        else if (o.greaterThan(k, kx)) balance(kx, x, l, (go(r)))
         else glue(l, r)
       }
     }
@@ -147,17 +156,22 @@ sealed trait BMap[K, A] {
    * the element is deleted. If it is Some(y) the key k is bound to the new value y.
    */
   def updateWithKey(f: K => A => Option[A])(k: K)(implicit o: Order[K]): BMap[K, A] = {
+    import std.Option.option._
     def go(m: BMap[K, A]): BMap[K, A] = m match {
-      case Tip() => empty[K, A]
-      case Bin(sx, kx, x, l, r) => o.order(k)(kx) match {
-        case LT => balance(kx, x, go(l), r)
-        case GT => balance(kx, x, l, go(r))
-        case EQ => f(kx)(x).fold(xx => Bin(sx, kx, xx, l, r), glue(l, r))
+      case Tip() => BMap.empty[K, A]
+      case Bin(sx, kx, x, l, r) => {
+          if (o.lessThan(k, kx)) balance(kx, x, go(l), r)
+          else if (o.greaterThan(k, kx)) balance(kx, x, l, go(r))
+          else f(kx)(x) match {
+             case Some(xx) => Bin(sx, kx, xx, l, r)
+             case None => glue(l, r)
+          }
+        }
       }
-    }
     go(this)
   }
 
+  import scalaz.Ordering._
   /**
    * O (log n). Lookup and update.
    * The function returns changed value, if it is updated.
@@ -167,7 +181,7 @@ sealed trait BMap[K, A] {
   def updateLookupWithKey(f: K => A => Option[A])(k: K)(implicit o: Order[K]): (Option[A], BMap[K, A]) = {
     def go(m: BMap[K, A]): (Option[A], BMap[K, A]) = m match {
       case Tip() => (None, empty[K, A])
-      case Bin(sx, kx, x, l, r) => o.order(k)(kx) match {
+      case Bin(sx, kx, x, l, r) => o.order(k, kx) match {
         case LT => {
           val (found, l1) = go(l)
           (found, balance(kx, x, l1, r))
@@ -193,7 +207,7 @@ sealed trait BMap[K, A] {
         case None => empty
         case Some(x) => singleton(k, x)
       }
-      case Bin(sx, kx, x, l, r) => o.order(k)(kx) match {
+      case Bin(sx, kx, x, l, r) => o.order(k, kx) match {
         case LT => balance(kx, x, go(l), r)
         case GT => balance(kx, x, l, go(r))
         case EQ => f(Some(x)) match {
@@ -321,20 +335,36 @@ sealed trait BMap[K, A] {
     case (_, _, t1, Tip()) => t1
     case (cmplo, cmphi, Tip(), Bin(_, kx, x, l, r)) => join(kx, x, filterGt(cmplo, l), filterLt(cmphi, r))
     case (cmplo, cmphi, Bin(_, kx, x, l, r), t2) => {
-      val cmpkx: K => Ordering = k => o.order(kx)(k)
+      val cmpkx: K => Ordering = k => o.order(kx, k)
       join(kx, x, hedgeUnionL(cmplo, cmpkx, l, trim(cmplo, cmpkx, t2)), hedgeUnionL(cmpkx, cmphi, r, trim(cmpkx, cmphi, t2)))
     }
   }
+
+//  def hedgeUnionWithKey(k1: K => A => A => A)(k2: K => Ordering)(k3: K => Ordering)(m1: BMap[K, A])(m2: BMap[K, A])(implicit o: Order[K]): BMap[K, A] =
+//    (k1, k2, k3, m1, m2) match {
+//      case (_, _, _, t1, Tip()) => t1
+//      case (_, cmplo, cmphi, Tip(), Bin(_, kx, x, l, r)) => join(kx, x, (filterGt(cmplo, l)), filterLt(cmphi, r))
+//      case (f, cmplo, cmphi, Bin(_, kx, x, l, r), t2) => {
+//        val cmpkx = o.order(kx)
+//        val lt = trim(cmplo, cmpkx, t2)
+//        val (found, gt) = trimLookupLo(kx, cmphi, t2)
+//        val newx = found.fold(xy => f(kx)(x)(xy._2), x)
+//        join(kx, newx, hedgeUnionWithKey(f)(cmplo)(cmpkx)(l)(lt), hedgeUnionWithKey(f)(cmpkx)(cmphi)(r)(gt))
+//      }
+//    }
 
   def hedgeUnionWithKey(k1: K => A => A => A)(k2: K => Ordering)(k3: K => Ordering)(m1: BMap[K, A])(m2: BMap[K, A])(implicit o: Order[K]): BMap[K, A] =
     (k1, k2, k3, m1, m2) match {
       case (_, _, _, t1, Tip()) => t1
       case (_, cmplo, cmphi, Tip(), Bin(_, kx, x, l, r)) => join(kx, x, (filterGt(cmplo, l)), filterLt(cmphi, r))
       case (f, cmplo, cmphi, Bin(_, kx, x, l, r), t2) => {
-        val cmpkx = o.order(kx)
+        val cmpkx = o.order(kx, _: K)
         val lt = trim(cmplo, cmpkx, t2)
         val (found, gt) = trimLookupLo(kx, cmphi, t2)
-        val newx = found.fold(xy => f(kx)(x)(xy._2), x)
+        val newx = found match {
+          case Some(xy) => f(kx)(x)(xy._2)
+          case None => x
+        }
         join(kx, newx, hedgeUnionWithKey(f)(cmplo)(cmpkx)(l)(lt), hedgeUnionWithKey(f)(cmpkx)(cmphi)(r)(gt))
       }
     }
@@ -352,13 +382,13 @@ sealed trait BMap[K, A] {
 
   def trimLookupLo(k1: K, k2: K => Ordering, m: BMap[K, A])(implicit o: Order[K]): (Option[(K, A)], BMap[K, A]) = (k1, k2, m) match {
     case (_, _, Tip()) => (None, empty)
-    case (lo, cmphi, t@Bin(_, kx, x, l, r)) => o.order(lo)(kx) match {
+    case (lo, cmphi, t@Bin(_, kx, x, l, r)) => o.order(lo, kx) match {
       case LT => cmphi(kx) match {
         case GT => (t.lookupAssoc(lo), t)
         case _ => trimLookupLo(lo, cmphi, l)
       }
       case GT => trimLookupLo(lo, cmphi, r)
-      case EQ => (Some(kx, x), trim(o.order(lo), cmphi, r))
+      case EQ => (Some(kx, x), trim(o.order(lo, _: K), cmphi, r))
     }
   }
 
@@ -431,9 +461,9 @@ sealed trait BMap[K, A] {
     go(this)
   }
 
-  def foldr[B](f: A => (=> B) => B)(b: B): B = foldrWithKey(_ => f)(b)
+  def foldr[B](f: (A) => (=> B) => B)(b: B): B = foldrWithKey(_ => f)(b)
 
-  def foldrWithKey[B](f: K => A => (=> B) => B)(b: B): B = {
+  def foldrWithKey[B](f: K => (A) => (=> B) => B)(b: B): B = {
     def go(z: B, m: BMap[K, A]): B = (z, m) match {
       case (z, Tip()) => z
       case (z, Bin(_, kx, x, l, r)) => go(f(kx)(x)(go(z, r)), l)
@@ -485,7 +515,15 @@ sealed trait BMap[K, A] {
     case Bin(_, kx, x, Tip(), Tip()) => showsBars(bars) ++ showelem(kx)(x) ++ "\n"
     case Bin(_, kx, x, l, r) => {
       //TODO there must be a better way to do this...
-      showsBars(bars) ++ showelem(kx)(x) ++ "\n" ++ showWide(wide, bars) ++ showsTreeHang(showelem, wide, withBar(bars), l) ++ showWide(wide, bars) ++ showsTreeHang(showelem, wide, (withEmpty(bars)), r)
+      val sb = showsBars(bars) 
+      val se = showelem(kx)(x)
+      val newLine = "\n"
+      val sw = showWide(wide, bars)
+      val sth = showsTreeHang(showelem, wide, withBar(bars), l)
+      val sthe = showsTreeHang(showelem, wide, (withEmpty(bars)), r)
+
+      sb ++ se ++ newLine + sw ++ sth ++ sw ++ sthe
+//      showsBars(bars) ++ showelem(kx)(x) ++ "\n" ++ showWide(wide, bars) ++ showsTreeHang(showelem, wide, withBar(bars), l) ++ showWide(wide, bars) ++ showsTreeHang(showelem, wide, (withEmpty(bars)), r)
     }
   }
 
@@ -557,6 +595,51 @@ trait BMaps {
     (t, kv) => t.insert(kv._1, kv._2)
   }
 
+  //instance Traversable (Map k) where
+  //traverse _ Tip = pure Tip
+  //traverse f (Bin s k v l r)
+  //    = flip (Bin s k) <$> traverse f l <*> f v <*> traverse f r
+
+  implicit def bmap[K: Order, V] = new Applicative[({type l[a]=BMap[K, a]})#l] with Traverse[({type l[a]=BMap[K, a]})#l] with Equal[BMap[K, V]] {
+    def ap[A, B](fa: ({type l[a] = BMap[K, a]})#l[A])(f: ({type l[a] = BMap[K, a]})#l[(A) => B]) = null
+
+    def equal(a1: BMap[K, V], a2: BMap[K, V]) = (a1.size == a2.size) && (a1.toList == a2.toList)
+
+    override def map[A, B](fa: BMap[K, A])(f: A => B): BMap[K, B] = fa map f
+
+    def foldR[A, B](fa: BMap[K, A], z: B)(f: (A) => (=> B) => B): B = fa.foldr(f)(z)
+    
+    def pure[A](a: => A) = BMap.empty[K, A]
+
+//    def compose[G](G: Functor[G]) = null
+//
+//    def product[G](implicit G: Functor[G]) = null
+//
+//    def compose[G](G0: Applicative[G]) = null
+//
+//    def product[G](implicit G0: Applicative[G]) = null
+
+    def traverseImpl[F[_], A, B](m: BMap[K, A])(f: (A) => F[B])(implicit F: Applicative[F]): F[BMap[K, B]] = {
+//      def mkBin(s: Int, k: K, v: F[B], l: BMap[K, B], r: BMap[K, B]): Bin[K, B] = Bin(s, k, v, l, r)
+//      def createBin[K] = (s: Int) => (k: K) => (mkBin(s, k, _: B, _: BMap[K, B], _: BMap[K, B])).curried
+
+      m match {
+        case Tip() => F.pure(Tip[K, B])
+        case Bin(s, k, v, l, r) => {
+////          val binC = createBin(s)(k)
+//          val leftT = traverseImpl(l)(f)
+//          val rightT = traverseImpl(r)(f)
+//          val fv = f(v)
+          m.foldl[F[BMap[K, B]]](fbl => a => F.map2(f(a),fbl)((a, b) => b.insert(k, a)))(F.pure(empty[K, B]))
+
+//          F.pure(Tip[K, B])
+//          F.map()
+//          F.apply(F.map((x: B) => createBin(s)(k)(x))(f(v))(traverse[F, A, B](f).apply(l))).apply(traverse[F, A, B](f).apply(r))
+//          F.apply(F.map((x: B) => createBin(s)(k)(x))(f(v))(traverse[F, A, B](f).apply(l))).apply(traverse[F, A, B](f).apply(r))
+        }
+      }
+    }
+  }
 }
 
 object BMap extends BMaps {
@@ -585,39 +668,40 @@ object BMap extends BMaps {
     def fold[R](empty: => R, nonempty: (Int, K, V, BMap[K, V], BMap[K, V]) => R) = nonempty(s, k, v, left, right)
   }
 
-  implicit def BMapSemigroup[K: Order, V]: Semigroup[BMap[K, V]] =
-    semigroup(a => b => a union b)
-
-  implicit def BMapMonoid[K, V](implicit ss: Semigroup[V]): Monoid[Map[K, V]] = Monoid.monoid
-
-  implicit def BMapFunctor[K]: Functor[({type λ[α] = BMap[K, α]})#λ] = new Functor[({type λ[α] = BMap[K, α]})#λ] {
-    def fmap[A, B](f: A => B) = _ map f
-  }
-
-  implicit def BMapEqual[K: Equal, V: Equal]: Equal[BMap[K, V]] =
-    Equal.equalC[BMap[K, V]]((t1, t2) => t1.size == t2.size && (t1.toList == t2.toList))
-
-  implicit def BMapZero[K, V]: Zero[BMap[K, V]] =
-    zero(empty[K, V])
-
-  implicit def BMapFoldr[K]: Foldr[({type λ[α] = BMap[K, α]})#λ] = new Foldr[({type λ[α] = BMap[K, α]})#λ] {
-    def foldr[A, B] = f => z => _.foldr(f)(z)
-  }
-
-  implicit def BMapPointed[K: Zero]: Pointed[({type λ[α] = BMap[K, α]})#λ] = new Pointed[({type λ[α] = BMap[K, α]})#λ] {
-    def point[A](a: => A) = singleton(implicitly[Zero[K]].zero, a)
-  }
-
-  implicit def BMapValueApplic[X: Zero : Order]: Applic[({type λ[α] = BMap[X, α]})#λ] =
-    new Applic[({type λ[α] = BMap[X, α]})#λ] {
-      def applic[A, B](f: BMap[X, A => B]) =
-        a => f flatMap (a map _)
-    }
-
-
-  implicit def BMapPointedFunctor[X: Zero] = pointedFunctor[({type λ[α] = BMap[X, α]})#λ]
-
-  implicit def BMapApplicative[X: Zero : Order] = applicative[({type λ[α] = BMap[X, α]})#λ]
+//  implicit def BMapSemigroup[K: Order, V]: Semigroup[BMap[K, V]] = new Semigroup[BMap[K, V]] {
+//    def append(f1: BMap[K, V], f2: => BMap[K, V]) = f1 union f2
+//  }
+//
+//  implicit def BMapMonoid[K, V](implicit ss: Semigroup[V]): Monoid[Map[K, V]] =
+//
+//  implicit def BMapFunctor[K]: Functor[({type λ[α] = BMap[K, α]})#λ] = new Functor[({type λ[α] = BMap[K, α]})#λ] {
+//    def fmap[A, B](f: A => B) = _ map f
+//  }
+//
+//  implicit def BMapEqual[K: Equal, V: Equal]: Equal[BMap[K, V]] =
+//    Equal.equalC[BMap[K, V]]((t1, t2) => t1.size == t2.size && (t1.toList == t2.toList))
+//
+//  implicit def BMapZero[K, V]: Zero[BMap[K, V]] =
+//    zero(empty[K, V])
+//
+//  implicit def BMapFoldr[K]: Foldr[({type λ[α] = BMap[K, α]})#λ] = new Foldr[({type λ[α] = BMap[K, α]})#λ] {
+//    def foldr[A, B] = f => z => _.foldr(f)(z)
+//  }
+//
+//  implicit def BMapPointed[K: Zero]: Pointed[({type λ[α] = BMap[K, α]})#λ] = new Pointed[({type λ[α] = BMap[K, α]})#λ] {
+//    def point[A](a: => A) = singleton(implicitly[Zero[K]].zero, a)
+//  }
+//
+//  implicit def BMapValueApplic[X: Zero : Order]: Applic[({type λ[α] = BMap[X, α]})#λ] =
+//    new Applic[({type λ[α] = BMap[X, α]})#λ] {
+//      def applic[A, B](f: BMap[X, A => B]) =
+//        a => f flatMap (a map _)
+//    }
+//
+//
+//  implicit def BMapPointedFunctor[X: Zero] = pointedFunctor[({type λ[α] = BMap[X, α]})#λ]
+//
+//  implicit def BMapApplicative[X: Zero : Order] = applicative[({type λ[α] = BMap[X, α]})#λ]
 
 //  implicit def BMapTraverse[X: Zero : Order]: Traverse[({type λ[α] = BMap[X, α]})#λ] = new Traverse[({type λ[α] = BMap[X, α]})#λ] {
 //    def traverse[F[_] : Applicative, A, B](f: A => F[B]): BMap[X, A] => F[BMap[X, B]] = m => {
