@@ -595,11 +595,6 @@ trait BMaps {
     (t, kv) => t.insert(kv._1, kv._2)
   }
 
-  //instance Traversable (Map k) where
-  //traverse _ Tip = pure Tip
-  //traverse f (Bin s k v l r)
-  //    = flip (Bin s k) <$> traverse f l <*> f v <*> traverse f r
-
   implicit def bmap[K: Order, V] = new Applicative[({type l[a]=BMap[K, a]})#l] with Traverse[({type l[a]=BMap[K, a]})#l] with Equal[BMap[K, V]] {
     def ap[A, B](fa: ({type l[a] = BMap[K, a]})#l[A])(f: ({type l[a] = BMap[K, a]})#l[(A) => B]) = null
 
@@ -611,33 +606,9 @@ trait BMaps {
     
     def pure[A](a: => A) = BMap.empty[K, A]
 
-//    def compose[G](G: Functor[G]) = null
-//
-//    def product[G](implicit G: Functor[G]) = null
-//
-//    def compose[G](G0: Applicative[G]) = null
-//
-//    def product[G](implicit G0: Applicative[G]) = null
-
-    def traverseImpl[F[_], A, B](m: BMap[K, A])(f: (A) => F[B])(implicit F: Applicative[F]): F[BMap[K, B]] = {
-//      def mkBin(s: Int, k: K, v: F[B], l: BMap[K, B], r: BMap[K, B]): Bin[K, B] = Bin(s, k, v, l, r)
-//      def createBin[K] = (s: Int) => (k: K) => (mkBin(s, k, _: B, _: BMap[K, B], _: BMap[K, B])).curried
-
-      m match {
+    def traverseImpl[F[_], A, B](m: BMap[K, A])(f: (A) => F[B])(implicit F: Applicative[F]): F[BMap[K, B]] = m match {
         case Tip() => F.pure(Tip[K, B])
-        case Bin(s, k, v, l, r) => {
-////          val binC = createBin(s)(k)
-//          val leftT = traverseImpl(l)(f)
-//          val rightT = traverseImpl(r)(f)
-//          val fv = f(v)
-          m.foldl[F[BMap[K, B]]](fbl => a => F.map2(f(a),fbl)((a, b) => b.insert(k, a)))(F.pure(empty[K, B]))
-
-//          F.pure(Tip[K, B])
-//          F.map()
-//          F.apply(F.map((x: B) => createBin(s)(k)(x))(f(v))(traverse[F, A, B](f).apply(l))).apply(traverse[F, A, B](f).apply(r))
-//          F.apply(F.map((x: B) => createBin(s)(k)(x))(f(v))(traverse[F, A, B](f).apply(l))).apply(traverse[F, A, B](f).apply(r))
-        }
-      }
+        case Bin(s, k, v, l, r) => m.foldl[F[BMap[K, B]]](fbl => a => F.map2(f(a),fbl)((a, b) => b.insert(k, a)))(F.pure(empty[K, B]))
     }
   }
 }
@@ -667,76 +638,5 @@ object BMap extends BMaps {
   case class Bin[K, V](s: Int, k: K, v: V, left: BMap[K, V], right: BMap[K, V]) extends BMap[K, V] {
     def fold[R](empty: => R, nonempty: (Int, K, V, BMap[K, V], BMap[K, V]) => R) = nonempty(s, k, v, left, right)
   }
-
-//  implicit def BMapSemigroup[K: Order, V]: Semigroup[BMap[K, V]] = new Semigroup[BMap[K, V]] {
-//    def append(f1: BMap[K, V], f2: => BMap[K, V]) = f1 union f2
-//  }
-//
-//  implicit def BMapMonoid[K, V](implicit ss: Semigroup[V]): Monoid[Map[K, V]] =
-//
-//  implicit def BMapFunctor[K]: Functor[({type λ[α] = BMap[K, α]})#λ] = new Functor[({type λ[α] = BMap[K, α]})#λ] {
-//    def fmap[A, B](f: A => B) = _ map f
-//  }
-//
-//  implicit def BMapEqual[K: Equal, V: Equal]: Equal[BMap[K, V]] =
-//    Equal.equalC[BMap[K, V]]((t1, t2) => t1.size == t2.size && (t1.toList == t2.toList))
-//
-//  implicit def BMapZero[K, V]: Zero[BMap[K, V]] =
-//    zero(empty[K, V])
-//
-//  implicit def BMapFoldr[K]: Foldr[({type λ[α] = BMap[K, α]})#λ] = new Foldr[({type λ[α] = BMap[K, α]})#λ] {
-//    def foldr[A, B] = f => z => _.foldr(f)(z)
-//  }
-//
-//  implicit def BMapPointed[K: Zero]: Pointed[({type λ[α] = BMap[K, α]})#λ] = new Pointed[({type λ[α] = BMap[K, α]})#λ] {
-//    def point[A](a: => A) = singleton(implicitly[Zero[K]].zero, a)
-//  }
-//
-//  implicit def BMapValueApplic[X: Zero : Order]: Applic[({type λ[α] = BMap[X, α]})#λ] =
-//    new Applic[({type λ[α] = BMap[X, α]})#λ] {
-//      def applic[A, B](f: BMap[X, A => B]) =
-//        a => f flatMap (a map _)
-//    }
-//
-//
-//  implicit def BMapPointedFunctor[X: Zero] = pointedFunctor[({type λ[α] = BMap[X, α]})#λ]
-//
-//  implicit def BMapApplicative[X: Zero : Order] = applicative[({type λ[α] = BMap[X, α]})#λ]
-
-//  implicit def BMapTraverse[X: Zero : Order]: Traverse[({type λ[α] = BMap[X, α]})#λ] = new Traverse[({type λ[α] = BMap[X, α]})#λ] {
-//    def traverse[F[_] : Applicative, A, B](f: A => F[B]): BMap[X, A] => F[BMap[X, B]] = m => {
-//
-//      def mkBin[K, V](s: Int, k: K, v: V, l: BMap[K, V], r: BMap[K, V]): Bin[K, V] = Bin(s, k, v, l, r)
-////      def createBin[K] = (s: Int) => (k: K) => (mkBin(s, k, _: F[B], _: F[BMap[K, B]], _: F[BMap[K, B]])).curried
-//      def createBin[K] = (s: Int) => (k: K) => (mkBin(s, k, _: B, _: BMap[K, B], _: BMap[K, B])).curried
-//
-//      val a = implicitly[Applicative[F]]
-//      m match {
-//        case Tip() => a.point(Tip[X, B])
-//        case Bin(s, k, v, l, r) => {
-//          a.apply(a.fmap((x: B) => createBin(s)(k)(x))(f(v))(traverse[F, A, B](f).apply(l))).apply(traverse[F, A, B](f).apply(r))
-//        }
-//      }
-//    }
-//  }
-
-  //
-  //  def traverse[F[_] : Applicative, A, B](f: A => F[B]):
-  //     BinaryTree[A] => F[BinaryTree[B]] = (t: BinaryTree[A]) => {
-  //     val applicative = implicitly[Applicative[F]]
-  //     t match {
-  //       case Leaf(a)   => applicative.apply(applicative.point(createLeaf[B]))(f(a))
-  //       case Bin(l, r) =>
-  //        applicative.apply(applicative.apply(applicative.point(createBin[B]))(traverse[F, A, B](f).apply(l))).
-  //         apply(traverse[F, A, B](f).apply(r))
-  //     }
-  //   }
-
-
-  //  instance Traversable (Map k) where
-  //  traverse _ Tip = pure Tip
-  //  traverse f (Bin s k v l r)
-  //    = flip (Bin s k) <$> traverse f l <*> f v <*> traverse f r
-
 }
 

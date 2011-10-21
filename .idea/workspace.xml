@@ -62,7 +62,7 @@
       <file leaf-file-name="Ints.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/scalaz/std/Ints.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="9" column="108" selection-start="366" selection-end="366" vertical-scroll-proportion="0.0">
+            <state line="13" column="7" selection-start="382" selection-end="382" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -71,7 +71,7 @@
       <file leaf-file-name="BMap.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/org/ulysses/data/BMap.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="602" column="85" selection-start="21113" selection-end="21113" vertical-scroll-proportion="0.0">
+            <state line="640" column="1" selection-start="22557" selection-end="22557" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -89,7 +89,7 @@
       <file leaf-file-name="Equal.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="jar://$USER_HOME$/.ivy2/local/org.scalaz/scalaz-core_2.9.1/7.1-SNAPSHOT/srcs/scalaz-core_2.9.1-sources.jar!/scalaz/Equal.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="2" column="7" selection-start="23" selection-end="23" vertical-scroll-proportion="0.0">
+            <state line="19" column="0" selection-start="259" selection-end="259" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -98,7 +98,16 @@
       <file leaf-file-name="BMapExamples.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/test/scala/org/ulysses/data/BMapExamples.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="39" column="0" selection-start="1055" selection-end="1055" vertical-scroll-proportion="0.73357016">
+            <state line="21" column="13" selection-start="473" selection-end="473" vertical-scroll-proportion="0.23978686">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Ident.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="jar://$USER_HOME$/.ivy2/local/org.scalaz/scalaz-core_2.9.1/7.1-SNAPSHOT/srcs/scalaz-core_2.9.1-sources.jar!/scalaz/Ident.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="10" column="0" selection-start="241" selection-end="241" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -108,15 +117,6 @@
         <entry file="jar://$USER_HOME$/.ivy2/local/org.scalaz/scalaz-core_2.9.1/7.1-SNAPSHOT/srcs/scalaz-core_2.9.1-sources.jar!/scalaz/package.scala">
           <provider selected="true" editor-type-id="text-editor">
             <state line="1" column="7" selection-start="31" selection-end="31" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="String.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="jar://$USER_HOME$/.ivy2/local/org.scalaz/scalaz-core_2.9.1/7.1-SNAPSHOT/srcs/scalaz-core_2.9.1-sources.jar!/scalaz/std/String.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="12" column="9" selection-start="379" selection-end="379" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -134,7 +134,7 @@
       <file leaf-file-name="Object.java" pinned="false" current="false" current-in-tab="false">
         <entry file="jar:///usr/lib/jvm/java-6-sun/src.zip!/java/lang/Object.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="132" column="20" selection-start="6093" selection-end="6093" vertical-scroll-proportion="0.0">
+            <state line="95" column="4" selection-start="3960" selection-end="3960" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -175,9 +175,9 @@
         <option value="$PROJECT_DIR$/project/build.properties" />
         <option value="$PROJECT_DIR$/src/main/scala/Test.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/org/ulysses/data/ShowBmap.scala" />
-        <option value="$PROJECT_DIR$/src/main/scala/org/ulysses/data/BMap.scala" />
         <option value="$PROJECT_DIR$/src/test/scala/org/ulysses/perf/BMapPerf.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/scalaz/std/Ints.scala" />
+        <option value="$PROJECT_DIR$/src/main/scala/org/ulysses/data/BMap.scala" />
         <option value="$PROJECT_DIR$/src/test/scala/org/ulysses/data/BMapExamples.scala" />
       </list>
     </option>
@@ -421,7 +421,16 @@
           </PATH>
         </subPane>
       </pane>
-      <pane id="PackagesPane" />
+      <pane id="PackagesPane">
+        <subPane>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="ulysses-data" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewProjectNode" />
+            </PATH_ELEMENT>
+          </PATH>
+        </subPane>
+      </pane>
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -790,13 +799,6 @@
     </PATH>
   </component>
   <component name="editorHistoryManager">
-    <entry file="jar://$USER_HOME$/.ivy2/local/org.scalaz/scalaz-core_2.9.1/7.1-SNAPSHOT/srcs/scalaz-core_2.9.1-sources.jar!/scalaz/Empty.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="4" column="7" selection-start="59" selection-end="59" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="jar://$USER_HOME$/.ivy2/local/org.scalaz/scalaz-core_2.9.1/7.1-SNAPSHOT/srcs/scalaz-core_2.9.1-sources.jar!/scalaz/MonadPlus.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="11" column="6" selection-start="288" selection-end="288" vertical-scroll-proportion="0.0">
@@ -832,13 +834,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="jar:///usr/lib/jvm/java-6-sun/src.zip!/java/lang/Object.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="132" column="20" selection-start="6093" selection-end="6093" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="jar://$USER_HOME$/.ivy2/local/org.scalaz/scalaz-core_2.9.1/7.1-SNAPSHOT/srcs/scalaz-core_2.9.1-sources.jar!/scalaz/std/String.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="12" column="9" selection-start="379" selection-end="379" vertical-scroll-proportion="0.0">
@@ -860,30 +855,9 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/scalaz/std/Ints.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="9" column="108" selection-start="366" selection-end="366" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="jar://$USER_HOME$/.ivy2/local/org.scalaz/scalaz-core_2.9.1/7.1-SNAPSHOT/srcs/scalaz-core_2.9.1-sources.jar!/scalaz/Equal.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="2" column="7" selection-start="23" selection-end="23" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="jar://$USER_HOME$/.ivy2/local/org.scalaz/scalaz-core_2.9.1/7.1-SNAPSHOT/srcs/scalaz-core_2.9.1-sources.jar!/scalaz/Traverse.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="2" column="8" selection-start="24" selection-end="24" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/org/ulysses/data/BMap.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="602" column="85" selection-start="21113" selection-end="21113" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
@@ -895,9 +869,44 @@
         </state>
       </provider>
     </entry>
+    <entry file="jar:///usr/lib/jvm/java-6-sun/src.zip!/java/lang/Object.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="95" column="4" selection-start="3960" selection-end="3960" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar://$USER_HOME$/.ivy2/local/org.scalaz/scalaz-core_2.9.1/7.1-SNAPSHOT/srcs/scalaz-core_2.9.1-sources.jar!/scalaz/Equal.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="19" column="0" selection-start="259" selection-end="259" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/org/ulysses/data/BMap.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="640" column="1" selection-start="22557" selection-end="22557" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar://$USER_HOME$/.ivy2/local/org.scalaz/scalaz-core_2.9.1/7.1-SNAPSHOT/srcs/scalaz-core_2.9.1-sources.jar!/scalaz/Ident.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="10" column="0" selection-start="241" selection-end="241" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/scalaz/std/Ints.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="13" column="7" selection-start="382" selection-end="382" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/src/test/scala/org/ulysses/data/BMapExamples.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="39" column="0" selection-start="1055" selection-end="1055" vertical-scroll-proportion="0.73357016">
+        <state line="21" column="13" selection-start="473" selection-end="473" vertical-scroll-proportion="0.23978686">
           <folding />
         </state>
       </provider>

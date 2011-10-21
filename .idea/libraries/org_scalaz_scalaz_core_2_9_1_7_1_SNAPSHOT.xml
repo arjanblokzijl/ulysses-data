@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="org.scalaz_scalaz-core_2.9.1_7.1-SNAPSHOT">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.ivy2/local/org.scalaz/scalaz-core_2.9.1/7.1-SNAPSHOT/jars/scalaz-core_2.9.1.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.ivy2/local/org.scalaz/scalaz-core_2.9.1/7.1-SNAPSHOT/docs/scalaz-core_2.9.1-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.ivy2/local/org.scalaz/scalaz-core_2.9.1/7.1-SNAPSHOT/srcs/scalaz-core_2.9.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
