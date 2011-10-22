@@ -46,7 +46,7 @@ class BMapExamples extends Specification {
       
       val s3: Option[BMap[Int, String]] = s1.traverse[Option, String](x => Some(x + "abc"))
       println("s3: " + s3)
-//      bmap.equal(Some(expected), s3) must beTrue
+//      bmap.equal(Some(expected), s3) must beTrue //TODO why doesn't this work
       "" must beEmpty
     }
   }

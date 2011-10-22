@@ -603,16 +603,14 @@ trait BMaps {
     def pure[A](a: => A) = BMap.empty[K, A]
 
     def traverseImpl[F[_], A, B](m: BMap[K, A])(f: (A) => F[B])(implicit F: Applicative[F]): F[BMap[K, B]] = {
-      val createBin = (Bin(_: Int, _: K, _: B, _: BMap[K, B], _: BMap[K, B])).curried
-
+      def mkBin[K, V](s: Int)(k: K)(v: V)(l: BMap[K, V])(r: BMap[K, V]): BMap[K, V] = Bin(s, k, v, l, r)
       m match {
         case Tip() => F.pure(Tip[K, B])
         case Bin(s, k, v, l, r) => {
-          val fvm: F[(BMap[K, B]) => (BMap[K, B]) => Bin[K, B]] = F.map(f(v))(a => createBin(s)(k)(a))
+          val fvm = F.map(f(v))(a => mkBin(s)(k)(a)_)
           val fap = F.ap(traverseImpl[F, A, B](l)(f))(fvm)
           val fap2 = F.ap(traverseImpl(r)(f))(fap)
-          fap2.asInstanceOf[F[org.ulysses.data.BMap[K,B]]] //TODO get rid of this 'I know what I'm doing' cast
-//          fap2
+          fap2
         }
       }
     }
