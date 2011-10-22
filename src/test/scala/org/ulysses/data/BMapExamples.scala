@@ -14,7 +14,7 @@ class BMapExamples extends Specification {
     import std.Int._
     import scalaz.Equal._
     import Ident._
-    import scalaz.syntax.applicative._
+
     "create BMap from list" in {
       val t1 = fromList(List((5, "a"), (3, "b"), (7, "C")))
 
@@ -35,11 +35,19 @@ class BMapExamples extends Specification {
     }
 
     "be traversable" in {
-
+      import std.Option._
+      import scalaz.syntax.applicative._
       val s1 = fromList(List((5, "a"), (3, "b"), (7, "C")))
+      println("s1 is %s".format(s1))
       val s2 = s1.traverse[Id, String](_  + "abc")
-      s2.toList must haveSize(3)
-      bmap.equal(fromList(List((3, "babc"), (5, "aabc"), (7, "Cabc"))), s2) must beTrue
+      val expected: BMap[Int, String] = fromList(List((3, "babc"), (5, "aabc"), (7, "Cabc")))
+      println("s2 is %s".format(s2))
+      bmap.equal(expected, s2) must beTrue
+      
+      val s3: Option[BMap[Int, String]] = s1.traverse[Option, String](x => Some(x + "abc"))
+      println("s3: " + s3)
+//      bmap.equal(Some(expected), s3) must beTrue
+      "" must beEmpty
     }
   }
 }

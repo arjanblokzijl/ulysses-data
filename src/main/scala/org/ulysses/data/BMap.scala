@@ -591,10 +591,6 @@ trait BMaps {
 
   import BMap._
 
-  def fromList[K, V](l: List[(K, V)])(implicit o: Order[K]): BMap[K, V] = l.foldLeft(empty[K, V]) {
-    (t, kv) => t.insert(kv._1, kv._2)
-  }
-
   implicit def bmap[K: Order, V] = new Applicative[({type l[a]=BMap[K, a]})#l] with Traverse[({type l[a]=BMap[K, a]})#l] with Equal[BMap[K, V]] {
     def ap[A, B](fa: ({type l[a] = BMap[K, a]})#l[A])(f: ({type l[a] = BMap[K, a]})#l[(A) => B]) = null
 
@@ -606,9 +602,19 @@ trait BMaps {
     
     def pure[A](a: => A) = BMap.empty[K, A]
 
-    def traverseImpl[F[_], A, B](m: BMap[K, A])(f: (A) => F[B])(implicit F: Applicative[F]): F[BMap[K, B]] = m match {
+    def traverseImpl[F[_], A, B](m: BMap[K, A])(f: (A) => F[B])(implicit F: Applicative[F]): F[BMap[K, B]] = {
+      val createBin = (Bin(_: Int, _: K, _: B, _: BMap[K, B], _: BMap[K, B])).curried
+
+      m match {
         case Tip() => F.pure(Tip[K, B])
-        case Bin(s, k, v, l, r) => m.foldl[F[BMap[K, B]]](fbl => a => F.map2(f(a),fbl)((a, b) => b.insert(k, a)))(F.pure(empty[K, B]))
+        case Bin(s, k, v, l, r) => {
+          val fvm: F[(BMap[K, B]) => (BMap[K, B]) => Bin[K, B]] = F.map(f(v))(a => createBin(s)(k)(a))
+          val fap = F.ap(traverseImpl[F, A, B](l)(f))(fvm)
+          val fap2 = F.ap(traverseImpl(r)(f))(fap)
+          fap2.asInstanceOf[F[org.ulysses.data.BMap[K,B]]] //TODO get rid of this 'I know what I'm doing' cast
+//          fap2
+        }
+      }
     }
   }
 }
@@ -617,6 +623,8 @@ object BMap extends BMaps {
 
   val delta = 4
   val ratio = 2
+
+  def fromList[K, V](l: List[(K, V)])(implicit o: Order[K]): BMap[K, V] = l.foldLeft(empty[K, V])((t, kv) => t.insert(kv._1, kv._2))
 
   def singleton[K, V](k: K, v: V): BMap[K, V] = Bin(1, k, v, empty, empty)
 
