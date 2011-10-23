@@ -219,7 +219,29 @@ sealed trait BMap[K, A] {
     go(this)
   }
 
-  def glue(left: BMap[K, A], right: BMap[K, A]): BMap[K, A] = (left, right) match {
+//  {--------------------------------------------------------------------
+//    [merge l r]: merges two trees.
+//  --------------------------------------------------------------------}
+//  merge :: Map k a -> Map k a -> Map k a
+//  merge Tip r   = r
+//  merge l Tip   = l
+//  merge l@(Bin sizeL kx x lx rx) r@(Bin sizeR ky y ly ry)
+//    | delta*sizeL <= sizeR = balance ky y (merge l ly) ry
+//    | delta*sizeR <= sizeL = balance kx x lx (merge rx r)
+//    | otherwise            = glue l r
+
+
+  private[data] def merge(m1: BMap[K, A], m2: BMap[K, A]): BMap[K, A] = (m1, m2) match {
+    case (Tip(), r) => r
+    case (l, Tip()) => l
+    case (l@ Bin(sizeL, kx, x, lx, rx), r@Bin(sizeR, ky, y, ly, ry)) => {
+      if ((delta*sizeL) <= sizeR) balance(ky, y, merge(l, ly), ry)
+      else if ((delta*sizeR) <= sizeR) balance(kx, x, lx, merge(rx, r))
+      else glue(l, r)
+    }
+  }
+
+  private[data] def glue(left: BMap[K, A], right: BMap[K, A]): BMap[K, A] = (left, right) match {
     case (Tip(), r) => r
     case (l, Tip()) => l
     case (l, r) => {
@@ -340,19 +362,6 @@ sealed trait BMap[K, A] {
     }
   }
 
-//  def hedgeUnionWithKey(k1: K => A => A => A)(k2: K => Ordering)(k3: K => Ordering)(m1: BMap[K, A])(m2: BMap[K, A])(implicit o: Order[K]): BMap[K, A] =
-//    (k1, k2, k3, m1, m2) match {
-//      case (_, _, _, t1, Tip()) => t1
-//      case (_, cmplo, cmphi, Tip(), Bin(_, kx, x, l, r)) => join(kx, x, (filterGt(cmplo, l)), filterLt(cmphi, r))
-//      case (f, cmplo, cmphi, Bin(_, kx, x, l, r), t2) => {
-//        val cmpkx = o.order(kx)
-//        val lt = trim(cmplo, cmpkx, t2)
-//        val (found, gt) = trimLookupLo(kx, cmphi, t2)
-//        val newx = found.fold(xy => f(kx)(x)(xy._2), x)
-//        join(kx, newx, hedgeUnionWithKey(f)(cmplo)(cmpkx)(l)(lt), hedgeUnionWithKey(f)(cmpkx)(cmphi)(r)(gt))
-//      }
-//    }
-
   def hedgeUnionWithKey(k1: K => A => A => A)(k2: K => Ordering)(k3: K => Ordering)(m1: BMap[K, A])(m2: BMap[K, A])(implicit o: Order[K]): BMap[K, A] =
     (k1, k2, k3, m1, m2) match {
       case (_, _, _, t1, Tip()) => t1
@@ -368,6 +377,21 @@ sealed trait BMap[K, A] {
         join(kx, newx, hedgeUnionWithKey(f)(cmplo)(cmpkx)(l)(lt), hedgeUnionWithKey(f)(cmpkx)(cmphi)(r)(gt))
       }
     }
+
+  def difference[B](m: BMap[K, B])(implicit o: Order[K]): BMap[K, A] = (this, m) match {
+    case (Tip(), _) => empty[K, A]
+    case (t1, Tip()) => t1
+    case (t1, t2) => hedgeDiff(_ => Ordering.LT, _ => Ordering.GT, t1, t2)
+  }
+
+  private def hedgeDiff[C](k1: K => Ordering, k2: K => Ordering, m1: BMap[K, A], m2: BMap[K, C])(implicit o: Order[K]): BMap[K, A] = (k1, k2, m1, m2) match {
+    case (_, _, Tip(), _) => empty[K, A]
+    case (cmplo, cmphi, Bin(_, kx, x, l, r), Tip()) => join(kx, x, filterGt(cmplo, l), filterLt(cmphi, r))
+    case (cmplo, cmphi, t, Bin(_, kx, _, l, r)) => {
+      val cmpkx = o.order(kx, _: K)
+      merge(hedgeDiff(cmplo, cmpkx, trim(cmplo, cmpkx, t), l), hedgeDiff(cmpkx, cmphi, trim(cmpkx, cmphi, t), r))
+    }
+  }
 
   def trim(k1: K => Ordering, k2: K => Ordering, m: BMap[K, A]): BMap[K, A] = (k1, k2, m) match {
     case (_, _, Tip()) => empty
@@ -585,6 +609,8 @@ sealed trait BMap[K, A] {
     case Bin(_, k2, x2, t1, Bin(_, k3, x3, t2, t3)) => bin(k3, x3, bin(k2, x2, t1, t2), bin(k1, x1, t3, t4))
     case _ => sys.error("doubleR")
   }
+
+  def ===(m: BMap[K, A])(implicit e: Equal[BMap[K, A]]): Boolean = e.equal(this, m)
 }
 
 trait BMaps {
@@ -608,9 +634,7 @@ trait BMaps {
         case Tip() => F.pure(Tip[K, B])
         case Bin(s, k, v, l, r) => {
           val fvm = F.map(f(v))(a => mkBin(s)(k)(a)_)
-          val fap = F.ap(traverseImpl[F, A, B](l)(f))(fvm)
-          val fap2 = F.ap(traverseImpl(r)(f))(fap)
-          fap2
+          F.ap(traverseImpl(r)(f))(F.ap(traverseImpl[F, A, B](l)(f))(fvm))
         }
       }
     }
@@ -618,6 +642,8 @@ trait BMaps {
 }
 
 object BMap extends BMaps {
+
+
 
   val delta = 4
   val ratio = 2
