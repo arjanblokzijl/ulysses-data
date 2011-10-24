@@ -610,6 +610,9 @@ sealed trait BMap[K, A] {
     case _ => sys.error("doubleR")
   }
 
+  override def toString = "BMap (" + toStream.take(10).force + "...)"
+  
+  //some utility functions
   def ===(m: BMap[K, A])(implicit e: Equal[BMap[K, A]]): Boolean = e.equal(this, m)
 }
 
