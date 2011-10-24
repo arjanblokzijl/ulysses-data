@@ -614,6 +614,12 @@ sealed trait BMap[K, A] {
   
   //some utility functions
   def ===(m: BMap[K, A])(implicit e: Equal[BMap[K, A]]): Boolean = e.equal(this, m)
+
+  private[data] def balanced: Boolean = this match {
+    case Tip() => true
+    case Bin(_, _, _, l, r) => ((l.size + r.size <= 1) || (l.size <= delta*r.size) && (r.size <= delta*l.size)) && l.balanced && r.balanced
+
+  }
 }
 
 trait BMaps {
