@@ -3,7 +3,8 @@
 lib_managed
 project/boot
 project/target
-.idea*
+.idea
+.idea_modules
 target
 .DS_Store
 out
