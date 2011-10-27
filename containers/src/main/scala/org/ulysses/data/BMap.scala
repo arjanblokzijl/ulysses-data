@@ -536,12 +536,12 @@ sealed trait BMap[K, A] {
 
   def showsTreeHang(showelem: K => A => String, wide: Boolean, bars: List[String], t: BMap[K, A]): String = t match {
     case Tip() => showsBars(bars) ++ "|\n"
-    case Bin(_, kx, x, Tip(), Tip()) => showsBars(bars) ++ showelem(kx)(x) ++ "\n"
+    case Bin(_, kx, x, Tip(), Tip()) => showsBars(bars) ++ showelem(kx)(x) ++ "n"
     case Bin(_, kx, x, l, r) => {
       //TODO there must be a better way to do this...
       val sb = showsBars(bars) 
       val se = showelem(kx)(x)
-      val newLine = "\n"
+      val newLine = "n"
       val sw = showWide(wide, bars)
       val sth = showsTreeHang(showelem, wide, withBar(bars), l)
       val sthe = showsTreeHang(showelem, wide, (withEmpty(bars)), r)
@@ -565,7 +565,7 @@ sealed trait BMap[K, A] {
 
   private def withBar(bars: List[String]): List[String] = "|  " :: bars
 
-  private def withEmpty(bars: List[String]): List[String] = "  " :: bars
+  private def withEmpty(bars: List[String]): List[String] = "" :: bars
 
 
   private def balance(k: K, v: A, l: BMap[K, A], r: BMap[K, A]): BMap[K, A] = {
@@ -613,6 +613,8 @@ sealed trait BMap[K, A] {
   override def toString = "BMap (" + toStream.take(10).force + "...)"
   
   //some utility functions
+
+  //TODO replace by equalsyntax, once it includes this typeclass
   def ===(m: BMap[K, A])(implicit e: Equal[BMap[K, A]]): Boolean = e.equal(this, m)
 
   private[data] def balanced: Boolean = this match {
@@ -651,8 +653,6 @@ trait BMaps {
 }
 
 object BMap extends BMaps {
-
-
 
   val delta = 4
   val ratio = 2

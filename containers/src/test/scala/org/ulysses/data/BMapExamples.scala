@@ -13,6 +13,7 @@ class BMapExamples extends Specification {
     import scalaz._
     import std.Int._
     import scalaz.Equal._
+    import scalaz.syntax._
     import Ident._
 
     "create BMap from list" in {

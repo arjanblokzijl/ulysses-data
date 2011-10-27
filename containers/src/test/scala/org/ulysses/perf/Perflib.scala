@@ -70,7 +70,7 @@ object Perflib {
 
   def title(str: String) {
     div('=')
-    println("  " + str)
+    println("" + str)
   }
 
   def div(c: Char) = {
