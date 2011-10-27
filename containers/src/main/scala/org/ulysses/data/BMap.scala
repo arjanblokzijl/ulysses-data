@@ -69,7 +69,7 @@ sealed trait BMap[K, A] {
    * O(log n)
    * Finds the value associated with the given key K in the map, returns the given default value if the key is not present.
    */
-  def findWithDefault(v: A, k: K)(implicit o: Order[K]): A = lookup(k)(o) match {
+  def findWithDefault(v: A, k: K)(implicit K: Order[K]): A = lookup(k)(K) match {
     case Some(x) => x
     case None => v
   }
@@ -219,17 +219,9 @@ sealed trait BMap[K, A] {
     go(this)
   }
 
-//  {--------------------------------------------------------------------
-//    [merge l r]: merges two trees.
-//  --------------------------------------------------------------------}
-//  merge :: Map k a -> Map k a -> Map k a
-//  merge Tip r   = r
-//  merge l Tip   = l
-//  merge l@(Bin sizeL kx x lx rx) r@(Bin sizeR ky y ly ry)
-//    | delta*sizeL <= sizeR = balance ky y (merge l ly) ry
-//    | delta*sizeR <= sizeL = balance kx x lx (merge rx r)
-//    | otherwise            = glue l r
+  def elems: Stream[A] = for ((x, y) <- toStream) yield(y)
 
+  def keys: Stream[K] = for ((x, y) <- toStream) yield(x)
 
   private[data] def merge(m1: BMap[K, A], m2: BMap[K, A]): BMap[K, A] = (m1, m2) match {
     case (Tip(), r) => r

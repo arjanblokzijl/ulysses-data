@@ -13,7 +13,6 @@ class BMapExamples extends Specification {
     import scalaz._
     import std.Int._
     import scalaz.Equal._
-    import scalaz.syntax._
     import Ident._
 
     "create BMap from list" in {
@@ -37,7 +36,8 @@ class BMapExamples extends Specification {
 
     "be traversable" in {
       import std.Option._
-      import scalaz.syntax.applicative._
+      import syntax.applicative._
+      import syntax.traverse._
       val s1 = fromList(List((5, "a"), (3, "b"), (7, "C")))
       println("s1 is %s".format(s1))
       val s2 = s1.traverse[Id, String](_  + "abc")
@@ -52,7 +52,8 @@ class BMapExamples extends Specification {
 
     "be traversable for large lists" in {
       import std.Option._
-      import scalaz.syntax.applicative._
+      import syntax.applicative._
+      import syntax.traverse._
       var bMap = BMap.empty[Int, String]
       val sample = 100000
       (1 to sample).foreach(i => bMap = bMap.insert(i, "aaa"))
