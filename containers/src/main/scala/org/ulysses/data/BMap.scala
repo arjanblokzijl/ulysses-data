@@ -620,8 +620,9 @@ trait BMaps {
 
   import BMap._
 
-  implicit def bmap[K: Order, V] = new Applicative[({type l[a]=BMap[K, a]})#l] with Traverse[({type l[a]=BMap[K, a]})#l] with Equal[BMap[K, V]] {
-    def ap[A, B](fa: ({type l[a] = BMap[K, a]})#l[A])(f: ({type l[a] = BMap[K, a]})#l[(A) => B]) = null
+//  implicit def bmap[K: Order, V] = new Applicative[({type l[a]=BMap[K, a]})#l] with Traverse[({type l[a]=BMap[K, a]})#l] with Equal[BMap[K, V]] {
+  implicit def bmap[K: Order, V] = new Traverse[({type l[a]=BMap[K, a]})#l] with Equal[BMap[K, V]] {
+//    def ap[A, B](fa: ({type l[a] = BMap[K, a]})#l[A])(f: ({type l[a] = BMap[K, a]})#l[(A) => B]) = null //TODO
 
     def equal(a1: BMap[K, V], a2: BMap[K, V]) = (a1.size == a2.size) && (a1.toList == a2.toList)
 
@@ -629,7 +630,7 @@ trait BMaps {
 
     def foldR[A, B](fa: BMap[K, A], z: B)(f: (A) => (=> B) => B): B = fa.foldr(f)(z)
     
-    def pure[A](a: => A) = BMap.empty[K, A]
+    def pure[A](a: => A) = BMap.empty[K, A] //TODO
 
     def traverseImpl[F[_], A, B](m: BMap[K, A])(f: (A) => F[B])(implicit F: Applicative[F]): F[BMap[K, B]] = {
       def mkBin[K, V](s: Int)(k: K)(v: V)(l: BMap[K, V])(r: BMap[K, V]): BMap[K, V] = Bin(s, k, v, l, r)
