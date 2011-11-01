@@ -15,30 +15,20 @@ object Internal {
   sealed trait Step[A, F[_], B]
   case class Continue[A, F[_], B](f: StreamI[A] => Iteratee[A, F, B]) extends Step[A, F, B]
   case class Yield[A, F[_], B](b: B, s: StreamI[A]) extends Step[A, F, B]
-  case object Error extends Step[Nothing, Nothing, Nothing] {
-    def apply(): Nothing = sys.error("bzzt")
+//  case class Error[A, F[_], B]() extends Step[A, F, B]
+
+  case object Error {
+    def apply[A, F[_], B]:Step[A, F, B] = new Step[A, F, B]{} //TODO define fold on step
+
+    def unapply[A, F[_], B](s: Step[A, F, B]): Boolean = s match {
+      case Continue(_) | Yield(_, _) => false
+      case _ => true
+    }
   }
 
-//  trait IterateeI[A, F[_], B] {
-//    def runIteratee[A, F[_], B](iteratee: IterateeI): Step[A, F, B]
-//  }
+  def err[A, F[_], B] = Error[A, F, B]
 
   case class Iteratee[A, F[_], B](runI: F[Step[A, F, B]])
-
-//  def runIteratee[A, F[_], B](f: Iteratee[A, F, B]) : F[Step[A, F, B]] = F.pure
-
-//  newtype Iteratee a m b = Iteratee
-//	{ runIteratee :: m (Step a m b)
-//	}
-//  runIteratee: Iteratee a m b -> m (Step[A, M, B])
-//>|  newtype Age = Age { unAge :: Int }
-//>|brings into scope both a constructor and a de-constructor:
-// >|  Age   :: Int -> Age
-//>| unAge :: Age -> Int
-
-//  def runIteratee[A, F[_], B]
-
-//  case class Iteratee[A, F[_], B](value: M[IterVM[M, E, A]])
 
   type Enumerator[A, F[_], B] = Step[A, F, B] => Iteratee[A, F, B]
 
@@ -58,9 +48,20 @@ trait Iteratees {
   
   implicit def iterateeMonad[X, F[_]](implicit F: Monad[F]) = new Monad[({type l[a]=Iteratee[X, F, a]})#l] {
     def bind[A, B](fa: Iteratee[X, F, A])(f: (A) => Iteratee[X, F, B]) = {
-      null
+      Iteratee(F.bind(fa.runI)(mStep => mStep match {
+        case Yield(x, Chunks(List())) => f(x).runI
+        case Yield(x, chunk) =>  {
+          F.bind(f(x).runI)(r => r match {
+            case Continue(k) => k(chunk).runI
+            case Error() => F.pure(err[X, F, B])
+          })
+        }
+        case Continue(k) => F.pure(err[X, F, B]) //F.pure(Continue(k)) //TODO fix this
+//        case Continue(k) => F.pure(Continue(s => F.bind(k(s).runI)_))
+        case Error() => F.pure(err[X, F, B])
+      }
+      ))
     }
-
     def pure[A](a: => A) = yieldI(a, Chunks(List()))
   }
 }
