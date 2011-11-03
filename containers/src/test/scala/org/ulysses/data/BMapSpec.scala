@@ -1,6 +1,6 @@
 package org.ulysses.data
 
-import scalaz.std
+import scalaz._
 
 import org.specs2._
 import org.scalacheck._
@@ -13,7 +13,7 @@ import specification.gen._
  */
 
 import BMap._
-import std.AnyVal._
+import std.anyVal._
 
 object BMapUtil {
 

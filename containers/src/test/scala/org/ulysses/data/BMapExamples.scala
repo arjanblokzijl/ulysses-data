@@ -11,7 +11,7 @@ class BMapExamples extends Specification {
   "A BMap" should {
     import BMap._
     import scalaz._
-    import std.AnyVal._
+    import std.anyVal._
     import scalaz.Equal._
     import Ident._
 
@@ -35,7 +35,7 @@ class BMapExamples extends Specification {
     }
 
     "be traversable" in {
-      import std.Option._
+      import std.option._
       import syntax.applicative._
       import syntax.traverse._
       val s1 = fromList(List((5, "a"), (3, "b"), (7, "C")))
@@ -51,7 +51,7 @@ class BMapExamples extends Specification {
     }
 
     "be traversable for large lists" in {
-      import std.Option._
+      import std.option._
       import syntax.applicative._
       import syntax.traverse._
       var bMap = BMap.empty[Int, String]

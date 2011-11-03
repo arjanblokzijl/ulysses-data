@@ -1,15 +1,16 @@
 package org.ulysses.data
 
-import scalaz._
-//import Scalaz._
+import scalaz.std
+
 
 /**
  * A port of haskell's Data.Map based on a size balanced tree.
  * @see http://haskell.org/ghc/docs/latest/html/libraries/containers-0.4.1.0/Data-Map.html
  */
 sealed trait BMap[K, A] {
-
+  import scalaz._
   import BMap._
+  import scalaz.Ordering._
 
   type ShowS = String => String
 
@@ -81,10 +82,10 @@ sealed trait BMap[K, A] {
   def insert(kx: K, x: A)(implicit o: Order[K]): BMap[K, A] = {
     def go(m: BMap[K, A]): BMap[K, A] = m match {
       case Tip() => singleton(kx, x)
-      case Bin(sy, ky, y, l, r) => {
-        if (o.lessThan(kx, ky)) balance(ky, y, (go(l)), r)
-        else if (o.greaterThan(kx, ky)) balance(ky, y, l, (go(r)))
-        else Bin(sy, kx, x, l, r)
+      case Bin(sy, ky, y, l, r) => o.order(kx, ky) match {
+        case LT => balance(ky, y, (go(l)), r)
+        case GT => balance(ky, y, l, (go(r)))
+        case EQ => Bin(sy, kx, x, l, r)
       }
     }
     go(this)
@@ -156,7 +157,7 @@ sealed trait BMap[K, A] {
    * the element is deleted. If it is Some(y) the key k is bound to the new value y.
    */
   def updateWithKey(f: K => A => Option[A])(k: K)(implicit o: Order[K]): BMap[K, A] = {
-    import std.Option.option._
+    import std.option._
     def go(m: BMap[K, A]): BMap[K, A] = m match {
       case Tip() => BMap.empty[K, A]
       case Bin(sx, kx, x, l, r) => {
@@ -171,7 +172,7 @@ sealed trait BMap[K, A] {
     go(this)
   }
 
-  import scalaz.Ordering._
+
   /**
    * O (log n). Lookup and update.
    * The function returns changed value, if it is updated.
@@ -643,8 +644,12 @@ sealed trait BMap[K, A] {
 trait BMaps {
 
   import BMap._
+  import scalaz._
+  import scalaz.Traverse
+  import syntax.traverse._
+  import std.list._
 
-//  implicit def bmap[K: Order, V] = new Applicative[({type l[a]=BMap[K, a]})#l] with Traverse[({type l[a]=BMap[K, a]})#l] with Equal[BMap[K, V]] {
+
   implicit def bmap[K: Order, V] = new Traverse[({type l[a]=BMap[K, a]})#l] with Equal[BMap[K, V]] {
 //    def ap[A, B](fa: ({type l[a] = BMap[K, a]})#l[A])(f: ({type l[a] = BMap[K, a]})#l[(A) => B]) = null //TODO
 
@@ -670,7 +675,8 @@ trait BMaps {
 }
 
 object BMap extends BMaps {
-
+  import scalaz._
+  import syntax.traverse._
   val delta = 4
   val ratio = 2
 

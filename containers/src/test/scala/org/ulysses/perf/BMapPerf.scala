@@ -12,7 +12,7 @@ import scalaz.std
 object BMapPerf {
   import Perflib._
   import BMap._
-  import std.String._
+  import std.string._
 
    def main(args: Array[String]) {
      val sample = 100000
