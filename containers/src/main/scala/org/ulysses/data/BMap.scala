@@ -506,9 +506,6 @@ sealed trait BMap[K, A] {
 
   def toList: List[(K, A)] = toAscList
 
-  //  import wrap.StreamW._
-  //  def toStream: String[(K, V)] = foldrWithKey(Stream[(K, V)])(k => x => xs => (k,x))
-
   def toAscList: List[(K, A)] = foldrWithKey[List[(K, A)]](k => x => xs => (k, x) :: xs)(Nil)
 
   def toDescList: List[(K, A)] = foldlWithKey[List[(K, A)]](k => xs => x => (k, x) :: xs)(Nil)
