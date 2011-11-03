@@ -3,7 +3,8 @@ package org.ulysses.data
 import scalaz.Monad
 
 /**
- * User: arjan
+ * A port of haskell's enumerator library.
+ * This is in no way an attempt to improve over Scalaz's implementation, but just for the learning experience.
  */
 
 trait Enumerator {
@@ -12,7 +13,7 @@ trait Enumerator {
   import org.ulysses.data.enumerator.Iteratees._
 
 //  def run[A, M[_], B](i: Iteratee[A, M[_], B])(implicit M: Monad[M]) : M[Either[Throwable, B]]= {
-//    i.bind()
+//    for (mStep <- i)
 //  }
 
 //  -- | Run an iteratee until it finishes, and return either the final value

@@ -59,6 +59,7 @@ object Internal {
 
   def yieldI[A, F[_], B](x: B, extra: StreamI[A])(implicit F: Monad[F]): Iteratee[A, F, B] = returnI(Yield(x, extra))
 
+  //crazy signature, and the way is done in haskell doesn't exactly translate that well, it seems. TODO therefore
 //  def checkcontinue1[A, F[_], B, Step[A, F, B]](inner: Step[A, F, B] => (=> Enumerator[A, F, B]) => Step[A, F, B] => (Stream[A] => Iteratee[A, F, B]) => Iteratee[A, F, B], s1: Step[A, F, B])(implicit F: Monad[F]): Enumerator[A, F, B] =  {
 //    def loop(inn: Step[A, F, B] => (=> Enumerator[A, F, B]) => Step[A, F, B] => (Stream[A] => Iteratee[A, F, B]) => Iteratee[A, F, B], s11: Step[A, F, B]) = (inn, s11) match {
 //      case (s, (Continue(k))) => inner(loop(s, _: Step[A, F, B]), k)
