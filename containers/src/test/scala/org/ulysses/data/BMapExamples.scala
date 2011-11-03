@@ -11,7 +11,7 @@ class BMapExamples extends Specification {
   "A BMap" should {
     import BMap._
     import scalaz._
-    import std.Int._
+    import std.AnyVal._
     import scalaz.Equal._
     import Ident._
 

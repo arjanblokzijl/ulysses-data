@@ -500,6 +500,35 @@ sealed trait BMap[K, A] {
     go(b, this)
   }
 
+  /**
+   * O(log n). The expression split is a pair (map1, map2) where the keys in map1 are smaller than k
+   * and the keys in map2 are larger than k.
+   * Any key equal to k is found in neither map1 or map2.
+   *
+   * {{{
+   * (fromList [(5,"a"), (3,"b")]) split(2) === (empty, fromList(List((3,"b"), (5,"a")))
+   * (fromList [(5,"a"), (3,"b")]) split(3) === (empty, singleton(5, "a"))
+   * (fromList [(5,"a"), (3,"b")]) split(3) === (singleton(3,"b"), singleton(5,"a"))
+   * }}}
+   */
+  def split(k: K)(implicit o: Order[K]): (BMap[K, A], BMap[K, A]) = {
+    def go(m: BMap[K, A]): (BMap[K, A], BMap[K, A]) = m match {
+      case Tip() => (empty[K, A], empty[K, A])
+      case Bin(_, kx, x, l, r) => o.order(k, kx) match {
+        case LT => {
+          val (lt, gt) = go(l)
+          (lt, join(kx, x, gt, r))
+        }
+        case GT => {
+          val (lt, gt) = go(r)
+          (join(kx, x, lt, l), gt)
+        }
+        case EQ => (l, r)
+      }
+    }
+    go(this)
+  }
+
   def toStream: Stream[(K, A)] = foldrWithKey[Stream[(K, A)]](k => x => xs => Stream.cons((k, x), xs))(Stream())
 
   def toUnsortedList: List[(K, A)] = toStream.toList
@@ -534,9 +563,7 @@ sealed trait BMap[K, A] {
       val sw = showWide(wide, bars)
       val sth = showsTreeHang(showelem, wide, withBar(bars), l)
       val sthe = showsTreeHang(showelem, wide, (withEmpty(bars)), r)
-
       sb ++ se ++ newLine + sw ++ sth ++ sw ++ sthe
-//      showsBars(bars) ++ showelem(kx)(x) ++ "\n" ++ showWide(wide, bars) ++ showsTreeHang(showelem, wide, withBar(bars), l) ++ showWide(wide, bars) ++ showsTreeHang(showelem, wide, (withEmpty(bars)), r)
     }
   }
 

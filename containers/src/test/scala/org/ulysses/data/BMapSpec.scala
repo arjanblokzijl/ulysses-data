@@ -13,7 +13,7 @@ import specification.gen._
  */
 
 import BMap._
-import std.Int._
+import std.AnyVal._
 
 object BMapUtil {
 
