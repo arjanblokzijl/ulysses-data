@@ -59,6 +59,23 @@ object Internal {
 
   def yieldI[A, F[_], B](x: B, extra: StreamI[A])(implicit F: Monad[F]): Iteratee[A, F, B] = returnI(Yield(x, extra))
 
+  def continue[A, F[_], B](k: StreamI[A] => Iteratee[A, F, B])(implicit F: Monad[F]) : Iteratee[A, F, B] = returnI(Continue(k))
+
+  def >>==[A, F[_], B, AA, BB](i: Iteratee[A, F, B], f: Step[A, F, B] => Iteratee[AA, F, BB])(implicit F: Monad[F]) : Iteratee[AA, F, BB] =
+//       Iteratee(F.bind(i.runI)(f))
+       Iteratee(F.bind(i.runI)(step => f(step).runI))
+
+//-- | The most primitive stream operator. @iter >>== enum@ returns a new
+//-- iteratee which will read from @enum@ before continuing.
+//(>>==) :: Monad m
+//       => Iteratee a m b
+//       -> (Step a m b -> Iteratee a' m b')
+//       -> Iteratee a' m b'
+//i >>== f = Iteratee (runIteratee i >>= runIteratee . f)
+//newtype Iteratee a m b = Iteratee
+//	{ runIteratee :: m (Step a m b)
+//	}
+
   //crazy signature, and the way is done in haskell doesn't exactly translate that well, it seems. TODO therefore
 //  def checkcontinue1[A, F[_], B, Step[A, F, B]](inner: Step[A, F, B] => (=> Enumerator[A, F, B]) => Step[A, F, B] => (Stream[A] => Iteratee[A, F, B]) => Iteratee[A, F, B], s1: Step[A, F, B])(implicit F: Monad[F]): Enumerator[A, F, B] =  {
 //    def loop(inn: Step[A, F, B] => (=> Enumerator[A, F, B]) => Step[A, F, B] => (Stream[A] => Iteratee[A, F, B]) => Iteratee[A, F, B], s11: Step[A, F, B]) = (inn, s11) match {
@@ -87,7 +104,7 @@ trait Iteratees {
       }
       ))
     }
-    def pure[A](a: => A) = yieldI(a, Chunks(List()))
+    def point[A](a: => A) = yieldI(a, Chunks(List()))
   }
 }
 

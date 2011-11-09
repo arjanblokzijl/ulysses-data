@@ -157,7 +157,7 @@ sealed trait BMap[K, A] {
    * the element is deleted. If it is Some(y) the key k is bound to the new value y.
    */
   def updateWithKey(f: K => A => Option[A])(k: K)(implicit o: Order[K]): BMap[K, A] = {
-    import std.option._
+//    import std.option._
     def go(m: BMap[K, A]): BMap[K, A] = m match {
       case Tip() => BMap.empty[K, A]
       case Bin(sx, kx, x, l, r) => {
@@ -478,7 +478,7 @@ sealed trait BMap[K, A] {
     go(this)
   }
 
-  def foldr[B](f: (A) => (=> B) => B)(b: B): B = foldrWithKey(_ => f)(b)
+  def foldr[B](f: (A) => (=> B) => B)(b: => B): B = foldrWithKey(_ => f)(b)
 
   def foldrWithKey[B](f: K => (A) => (=> B) => B)(b: B): B = {
     def go(z: B, m: BMap[K, A]): B = (z, m) match {
@@ -488,12 +488,12 @@ sealed trait BMap[K, A] {
     go(b, this)
   }
 
-  def foldl[B](f: B => (=> A) => B)(b: B): B = foldlWithKey(_ => f)(b)
+  def foldl[B](f: B => (=> A) => B)(b: => B): B = foldlWithKey(_ => f)(b)
 
   /**
    * O(n). Pre-order fold. The function will be applied from the highest value to the lowest. 
    */
-  def foldlWithKey[B](f: K => B => (=> A) => B)(b: B): B = {
+  def foldlWithKey[B](f: K => B => (=> A) => B)(b: => B): B = {
     def go(z: B, m: BMap[K, A]): B = (z, m) match {
       case (z, Tip()) => z
       case (z, Bin(_, kx, x, l, r)) => go(f(kx)(go(z, l))(x), r)
@@ -641,25 +641,25 @@ sealed trait BMap[K, A] {
   }
 }
 
-trait BMaps {
+trait BMapInstances {
 
   import BMap._
   import scalaz._
   import scalaz.Traverse
   import syntax.traverse._
-  import std.list._
 
 
-  implicit def bmap[K: Order, V] = new Traverse[({type l[a]=BMap[K, a]})#l] with Equal[BMap[K, V]] {
+  implicit def bmapTraverse[K: Order, V] = new Traverse[({type l[a]=BMap[K, a]})#l] {
 //    def ap[A, B](fa: ({type l[a] = BMap[K, a]})#l[A])(f: ({type l[a] = BMap[K, a]})#l[(A) => B]) = null //TODO
-
-    def equal(a1: BMap[K, V], a2: BMap[K, V]) = (a1.size == a2.size) && (a1.toList == a2.toList)
 
     override def map[A, B](fa: BMap[K, A])(f: A => B): BMap[K, B] = fa map f
 
     def foldR[A, B](fa: BMap[K, A], z: B)(f: (A) => (=> B) => B): B = fa.foldr(f)(z)
     
-    def pure[A](a: => A) = BMap.empty[K, A] //TODO
+    def point[A](a: => A) = BMap.empty[K, A] //TODO
+
+//    def foldRight[A, B](fa: ({type l[a] = BMap[K, a]})#l[A], z: => B)(f: (A, => B) => B) = fa.foldr[B](a => b => f(a, b))(z)
+    def foldRight[A, B](fa: BMap[K, A], z: => B)(f: (A, => B) => B) = fa.foldr[B](a => b => f(a, b))(z)
 
     def traverseImpl[F[_], A, B](m: BMap[K, A])(f: (A) => F[B])(implicit F: Applicative[F]): F[BMap[K, B]] = {
       def mkBin[K, V](s: Int)(k: K)(v: V)(l: BMap[K, V])(r: BMap[K, V]): BMap[K, V] = Bin(s, k, v, l, r)
@@ -672,9 +672,23 @@ trait BMaps {
       }
     }
   }
+
+  implicit def bmapEqual[K, V] = new Equal[BMap[K, V]] {
+    def equal(a1: BMap[K, V], a2: BMap[K, V]) = (a1.size == a2.size) && (a1.toAscList == a2.toAscList)
+  }
+
+  implicit def bmapOrder[K: Order, V: Order] = new Order[BMap[K, V]] {
+    def order(x: BMap[K, V], y: BMap[K, V]) = Ordering.EQ //TODO
+  }
+
+
+  implicit def bmapMonoid[K: Order, A] = new Monoid[BMap[K, A]] {
+    def append(f1: BMap[K, A], f2: => BMap[K, A]): BMap[K, A] = f1 union f2
+    def zero: BMap[K, A] = empty[K, A]
+  }
 }
 
-object BMap extends BMaps {
+object BMap extends BMapInstances {
   import scalaz._
   import syntax.traverse._
   val delta = 4
@@ -684,7 +698,7 @@ object BMap extends BMaps {
 
   def singleton[K, V](k: K, v: V): BMap[K, V] = Bin(1, k, v, empty, empty)
 
-  def empty[K, V]: BMap[K, V] = Tip[K, V]
+  def empty[K, A]: BMap[K, A] = Tip[K, A]
 
   /**The empty map */
   object Tip {
