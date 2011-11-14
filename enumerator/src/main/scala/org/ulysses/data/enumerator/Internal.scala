@@ -10,7 +10,7 @@ object Internal {
 
   sealed trait StreamI[A]
   case class Chunks[A](l: List[A]) extends StreamI[A]
-  case object EOF extends StreamI[Nothing]
+  case class EOF[A]() extends StreamI[A]
 
   sealed trait Step[A, F[_], B]
   case class Continue[A, F[_], B](f: StreamI[A] => Iteratee[A, F, B]) extends Step[A, F, B]
@@ -61,29 +61,42 @@ object Internal {
 
   def continue[A, F[_], B](k: StreamI[A] => Iteratee[A, F, B])(implicit F: Monad[F]) : Iteratee[A, F, B] = returnI(Continue(k))
 
-  def >>==[A, F[_], B, AA, BB](i: Iteratee[A, F, B], f: Step[A, F, B] => Iteratee[AA, F, BB])(implicit F: Monad[F]) : Iteratee[AA, F, BB] =
-//       Iteratee(F.bind(i.runI)(f))
+  def >>==[A, F[_], B, AA, BB](i: Iteratee[A, F, B])(f: Step[A, F, B] => Iteratee[AA, F, BB])(implicit F: Monad[F]) : Iteratee[AA, F, BB] =
        Iteratee(F.bind(i.runI)(step => f(step).runI))
 
-//-- | The most primitive stream operator. @iter >>== enum@ returns a new
-//-- iteratee which will read from @enum@ before continuing.
-//(>>==) :: Monad m
-//       => Iteratee a m b
-//       -> (Step a m b -> Iteratee a' m b')
-//       -> Iteratee a' m b'
-//i >>== f = Iteratee (runIteratee i >>= runIteratee . f)
-//newtype Iteratee a m b = Iteratee
-//	{ runIteratee :: m (Step a m b)
-//	}
-
-  //crazy signature, and the way is done in haskell doesn't exactly translate that well, it seems. TODO therefore
-//  def checkcontinue1[A, F[_], B, Step[A, F, B]](inner: Step[A, F, B] => (=> Enumerator[A, F, B]) => Step[A, F, B] => (Stream[A] => Iteratee[A, F, B]) => Iteratee[A, F, B], s1: Step[A, F, B])(implicit F: Monad[F]): Enumerator[A, F, B] =  {
-//    def loop(inn: Step[A, F, B] => (=> Enumerator[A, F, B]) => Step[A, F, B] => (Stream[A] => Iteratee[A, F, B]) => Iteratee[A, F, B], s11: Step[A, F, B]) = (inn, s11) match {
-//      case (s, (Continue(k))) => inner(loop(s, _: Step[A, F, B]), k)
-//    }
-//  }
+  def ==<<[A, F[_], B, AA, BB](f: Step[A, F, B] => Iteratee[AA, F, BB])(i: Iteratee[A, F, B])(implicit F: Monad[F]) : Iteratee[AA, F, BB] =
+    >>==(i)(f)
 
 
+  /**
+   * Sends EOF to its iteratee.
+   */
+  def enumEOF[A, F[_], B](implicit m: Monad[F]): Enumerator[A, F, B] = s => s match {
+    case Yield(x, _) => yieldI(x, EOF())
+    case ErrorS(s) => returnI(err(s))
+    case Continue(k) => >>==(k(EOF()))(check => check match {
+      case Continue(_) => sys.error("enumEOF: divergent iteratee")
+      case s => enumEOF(m)(s)
+    })
+  }
+
+  //type S1[A, F[_], B] = Step[A, F, B]
+
+  def checkContinue0[A, F[_], B](inner: Enumerator[A, F, B] => (StreamI[A] => Iteratee[A, F, B]) => Iteratee[A, F, B])(implicit m: Monad[F]): Enumerator[A, F, B] = {
+    def loop(s: Step[A, F, B])(implicit m: Monad[F]): Iteratee[A, F, B] = s match {
+      case Continue(k) => inner(loop)(k)
+      case _ => returnI(s)
+    }
+    loop
+  }
+
+    def checkcontinue1[A, F[_], B, S1](s1: S1, inner: Enumerator[A, F, B] => (=> S1) => (StreamI[A] => Iteratee[A, F, B]) => Iteratee[A, F, B])(implicit m: Monad[F]): Enumerator[A, F, B] = {
+      def loop(step: Step[A, F, B])(implicit m: Monad[F]): Iteratee[A, F, B] = step match {
+        case Continue(k) => inner(loop)(s1)(k)
+        case _ => returnI(step)
+      }
+      loop
+    }
 }
 
 trait Iteratees {
