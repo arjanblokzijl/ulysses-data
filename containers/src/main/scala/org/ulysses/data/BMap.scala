@@ -478,7 +478,17 @@ sealed trait BMap[K, A] {
     go(this)
   }
 
+  def foldRight[B](f: (A, => B) => B)(b: => B): B = foldRightWithKey(_ => f)(b)
+
   def foldr[B](f: (A) => (=> B) => B)(b: => B): B = foldrWithKey(_ => f)(b)
+
+  def foldRightWithKey[B](f: K => (A, => B) => B)(b: => B): B = {
+    def go(z: => B, m: BMap[K, A]): B = (z, m) match {
+      case (z, Tip()) => z
+      case (z, Bin(_, kx, x, l, r)) => go(f(kx)(x, go(z, r)), l)
+    }
+    go(b, this)
+  }
 
   def foldrWithKey[B](f: K => (A) => (=> B) => B)(b: B): B = {
     def go(z: B, m: BMap[K, A]): B = (z, m) match {
@@ -658,8 +668,7 @@ trait BMapInstances {
     
     def point[A](a: => A) = BMap.empty[K, A] //TODO
 
-//    def foldRight[A, B](fa: ({type l[a] = BMap[K, a]})#l[A], z: => B)(f: (A, => B) => B) = fa.foldr[B](a => b => f(a, b))(z)
-    def foldRight[A, B](fa: BMap[K, A], z: => B)(f: (A, => B) => B) = fa.foldr[B](a => b => f(a, b))(z)
+    def foldRight[A, B](fa: BMap[K, A], z: => B)(f: (A, => B) => B): B = fa.foldRight(f)(z)
 
     def traverseImpl[F[_], A, B](m: BMap[K, A])(f: (A) => F[B])(implicit F: Applicative[F]): F[BMap[K, B]] = {
       def mkBin[K, V](s: Int)(k: K)(v: V)(l: BMap[K, V])(r: BMap[K, V]): BMap[K, V] = Bin(s, k, v, l, r)
@@ -673,14 +682,16 @@ trait BMapInstances {
     }
   }
 
-  implicit def bmapEqual[K, V] = new Equal[BMap[K, V]] {
-    def equal(a1: BMap[K, V], a2: BMap[K, V]) = (a1.size == a2.size) && (a1.toAscList == a2.toAscList)
+
+  import std.list._
+  import std.tuple._
+  implicit def bmapEqual[K: Equal, V: Equal] = new Equal[BMap[K, V]] {
+    def equal(a1: BMap[K, V], a2: BMap[K, V]) = a1.size == a2.size && Equal[List[(K, V)]].equal(a1.toAscList, a2.toAscList)
   }
 
   implicit def bmapOrder[K: Order, V: Order] = new Order[BMap[K, V]] {
     def order(x: BMap[K, V], y: BMap[K, V]) = Ordering.EQ //TODO
   }
-
 
   implicit def bmapMonoid[K: Order, A] = new Monoid[BMap[K, A]] {
     def append(f1: BMap[K, A], f2: => BMap[K, A]): BMap[K, A] = f1 union f2
