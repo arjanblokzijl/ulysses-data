@@ -1,6 +1,7 @@
 package org.ulysses.data
 package enumerator
 
+import Internal._
 
 /**
  * User: arjan
@@ -21,7 +22,11 @@ object RunEnumerator {
 //-- >         Left exc -> putStrLn ("Got an exception: " ++ show exc)
 //-- >         Right chars -> putStrLn ("Got characters: " ++ show chars)
 
+
   def main(args: Array[String]) = {
-    println("TODO")
+    import scalaz.std.stream._
+    val iterate: (Step[Int, Stream, Int]) => Iteratee[Int, Stream, Int] = EL.iterate[Stream, Int, Int]((i: Int) => i + 1)(0)
+//    $$(iterate)
+
   }
 }
