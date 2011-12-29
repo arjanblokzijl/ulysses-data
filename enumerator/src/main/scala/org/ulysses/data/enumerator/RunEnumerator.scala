@@ -2,6 +2,7 @@ package org.ulysses.data
 package enumerator
 
 import Internal._
+import Enumerator._
 
 /**
  * User: arjan
@@ -25,8 +26,10 @@ object RunEnumerator {
 
   def main(args: Array[String]) = {
     import scalaz.std.stream._
-    val iterate: (Step[Int, Stream, Int]) => Iteratee[Int, Stream, Int] = EL.iterate[Stream, Int, Int]((i: Int) => i + 1)(0)
-//    $$(iterate)
+    val take5: Iteratee[Int, Stream, Stream[Int]] = EL.take[Stream, Int](5)
+    val iteratee: Iteratee[Int, Stream, Stream[Int]] = take5 >>== EL.iterate[Stream, Int, Stream[Int]](s => s + 1)(5)
 
+    val res = run(iteratee).map(result => result.toList)
+    println("result is " + res)
   }
 }

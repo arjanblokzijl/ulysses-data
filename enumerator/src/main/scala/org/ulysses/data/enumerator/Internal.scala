@@ -11,12 +11,11 @@ import scalaz.{Functor, Monad, MonadPlus}
 object Internal {
 
   sealed trait StreamI[A]
-  case class Chunks[A](l: List[A]) extends StreamI[A]
+  case class Chunks[A](l: Stream[A]) extends StreamI[A]
   case class EOF[A]() extends StreamI[A]
 
   sealed trait Step[A, F[_], B]
   case class Continue[A, F[_], B](f: StreamI[A] => Iteratee[A, F, B]) extends Step[A, F, B]
-//  case class Continue[A, F[_], B, S <: StreamI[A]](f: S => Iteratee[A, F, B]) extends Step[A, F, B]
   case class Yield[A, F[_], B](b: B, s: StreamI[A]) extends Step[A, F, B]
   case class ErrorS[A, F[_], B](t: Throwable) extends Step[A, F, B]
 
@@ -33,24 +32,22 @@ object Internal {
 
   case class Iteratee[A, F[_], B](runI: F[Step[A, F, B]]) {
     def flatMap[C](f: (B) => Iteratee[A, F, C])(implicit m: Monad[F]): Iteratee[A, F, C] = {
-      Iteratee(m.bind(runI)(mStep => mStep match {
-        case Yield(x, Chunks(List())) => f(x).runI
+      Iteratee(m.bind(runI)((mStep: Step[A, F, B]) => mStep match {
+        case Yield(x, Chunks(Stream.Empty)) => f(x).runI
         case Yield(x, chunk) => {
           m.bind(f(x).runI)(r => r match {
             case Continue(k) => k(chunk).runI
             case ErrorS(t) => m.pure(err(t))
           })
         }
-        case Continue(k) => {
-          m.pure(Continue(str => k(str).flatMap(f)))
-        }
+        case Continue(k) => m.pure(Continue(str => k(str).flatMap(f)))
         case ErrorS(t) => m.pure(err(t))
       }
       ))
     }
 
     def map[C](f: (B) => C)(implicit F: Monad[F]): Iteratee[A, F, C] = {
-      flatMap(a => Iteratee[A, F, C](F.pure(Yield(f(a), Chunks(List()))))) //compiles as well without type annotation, but intellij gives annoying red lines
+      flatMap(a => Iteratee[A, F, C](F.pure(Yield(f(a), Chunks(Stream.empty))))) //compiles as well without type annotation, but intellij gives annoying red lines
     }
 
     def >>==[AA, BB](f: Step[A, F, B] => Iteratee[AA, F, BB])(implicit F: Monad[F]): Iteratee[AA, F, BB] =
@@ -73,8 +70,7 @@ object Internal {
   type Enumeratee[AO, AI, F[_], B] = Step[AI, F, B] => Iteratee[AO, F, Step[AI, F, B]]
   def returnI[A, F[_], B](step: Step[A, F, B])(implicit F: Monad[F]): Iteratee[A, F, B] = Iteratee(F.pure(step))
   def yieldI[A, F[_], B](x: B, extra: StreamI[A])(implicit F: Monad[F]): Iteratee[A, F, B] = returnI(Yield(x, extra))
-  def continue[A, F[_], B, S <: StreamI[A]](k: StreamI[A] => Iteratee[A, F, B])(implicit F: Monad[F]): Iteratee[A, F, B] = returnI(Continue(k))
-//  def continue[A, F[_], B, S <: StreamI[A]](k: S => Iteratee[A, F, B])(implicit F: Monad[F]): Iteratee[A, F, B] = returnI(Continue(k))
+  def continue[A, F[_], B](k: StreamI[A] => Iteratee[A, F, B])(implicit F: Monad[F]): Iteratee[A, F, B] = returnI(Continue(k))
 
   /**
    * Sends EOF to its iteratee.
@@ -87,7 +83,6 @@ object Internal {
       case s => enumEOF(m)(s)
     })
   }
-
 
   def checkContinue0[A, F[_], B](inner: Enumerator[A, F, B] => (StreamI[A] => Iteratee[A, F, B]) => Iteratee[A, F, B])(implicit m: Monad[F]): Enumerator[A, F, B] = {
     def loop(s: Step[A, F, B])(implicit m: Monad[F]): Iteratee[A, F, B] = s match {
@@ -140,7 +135,7 @@ private[enumerator] trait IterateeMonad[X, F[_]] extends Monad[({type l[a] = Ite
 
   def bind[A, B](fa: Iteratee[X, F, A])(f: (A) => Iteratee[X, F, B]) = {
     Iteratee(F.bind(fa.runI)(mStep => mStep match {
-      case Yield(x, Chunks(List())) => f(x).runI
+      case Yield(x, Chunks(Stream.Empty)) => f(x).runI
       case Yield(x, chunk) => {
         F.bind(f(x).runI)(r => r match {
           case Continue(k) => k(chunk).runI
@@ -155,5 +150,5 @@ private[enumerator] trait IterateeMonad[X, F[_]] extends Monad[({type l[a] = Ite
 
   override def map[A, B](fa: Iteratee[X, F, A])(f: (A) => B): Iteratee[X, F, B] = fa map f
 
-  def point[A](a: => A) = yieldI(a, Chunks(List()))
+  def point[A](a: => A) = yieldI(a, Chunks(Stream.empty[X]))
 }
