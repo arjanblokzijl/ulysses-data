@@ -31,6 +31,13 @@ object Internal {
   def err[A, F[_], B](t: Throwable) = ErrorS[A, F, B](t)
 
   case class Iteratee[A, F[_], B](runI: F[Step[A, F, B]]) {
+    def apply(f: (=> B) => F[B])(implicit m: Monad[F]): F[B] = {
+      m.bind(runI)((mStep: Step[A, F, B]) => mStep match {
+        case Yield(b, s) => m.point(b)
+        case ErrorS(t) => throw t
+      })
+    }
+
     def flatMap[C](f: (B) => Iteratee[A, F, C])(implicit m: Monad[F]): Iteratee[A, F, C] = {
       Iteratee(m.bind(runI)((mStep: Step[A, F, B]) => mStep match {
         case Yield(x, Chunks(Stream.Empty)) => f(x).runI

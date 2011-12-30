@@ -26,10 +26,9 @@ object RunEnumerator {
 
   def main(args: Array[String]) = {
     import scalaz.std.stream._
-    val take5: Iteratee[Int, Stream, Stream[Int]] = EL.take[Stream, Int](5)
-    val iteratee: Iteratee[Int, Stream, Stream[Int]] = take5 >>== EL.iterate[Stream, Int, Stream[Int]](s => s + 1)(5)
-
-    val res = run(iteratee).map(result => result.toList)
-    println("result is " + res)
+    import scalaz.Id._
+    val iteratee = EL.take[scalaz.Id, Int](5) >>== EL.iterate((s: Int) => s + 1)(5)
+    val res = run(iteratee)
+    println("result is " + res.take(10).force)
   }
 }
