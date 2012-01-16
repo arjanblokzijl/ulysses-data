@@ -13,12 +13,14 @@ import org.ulysses.data.enumerator.Iteratees._
 object Enumerator extends EnumeratorFunctions {
 
   //figure out https://issues.scala-lang.org/browse/SI-5152 .... It pops up every now and again...
-  def run[A, M[_], B](i: Iteratee[A, M, B])(implicit m: Monad[M]): M[B] = {
-    val iter: Iteratee[A, M, B] = ==<<[A, M, B, A, B](enumEOF[A, M, B](m))(i)
-    m.map(iter.value)((s: Step[A, M, B]) => s match {
+  def run[A, F[_], B](i: Iteratee[A, F, B])(implicit M: Monad[F]): F[B] = {
+    val iter: Iteratee[A, F, B] = i ==<<(enumEOF[A, F, B](M))
+    M.map(iter.value)((s: Step[A, F, B]) => s match {
       case Yield(b, s) => b
       case ErrorS(t) => throw t
+      case Continue(k) => sys.error("divergent iteratee")
     })
+//    sys.error("b")
   }
 }
 
