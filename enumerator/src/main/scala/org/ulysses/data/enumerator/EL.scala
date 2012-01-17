@@ -34,44 +34,32 @@ object EL {
     else continue(loop(Stream.empty[A])(n))
   }
 
+  private def streams[A](l1: Stream[A])(l2: Stream[A]): Stream[A] = l1 append l2
+
+  def takeWhile[M[_], A](p: A => Boolean)(implicit m: Monad[M]): Iteratee[A, M, Stream[A]] = {
+    def loop(acc: Stream[A])(s: StreamI[A]): Iteratee[A, M, Stream[A]] = s match {
+      case Chunks(Stream.Empty) => continue(loop(acc))
+      case Chunks(xs) => {
+        xs.span(p) match {
+          case (_, Stream.Empty) => continue(loop(streams(acc)(xs)))
+          case (xss, extra) => yieldI(streams(acc)(xss), Chunks(extra))
+        }
+      }
+      case EOF() => yieldI[A, M, Stream[A]](acc, EOF())
+    }
+    continue(loop(Stream.Empty))
+  }
+
   /**
    * Applies a predicate to the stream. The inner iteratee only receives elements for which the predicate is true.
    */
   def filter[A, M[_], B](p: A => Boolean)(implicit M: Monad[M]): Enumeratee[A, A, M, B] =
     concatMap(x => Stream(x).filter(p))
 
-
-
-//  -- | @'Data.Enumerator.List.concatMap' f@ applies /f/ to each input element
-//  -- and feeds the resulting outputs to the inner iteratee.
-//  --
-//  -- Since: 0.4.8
-//  concatMap :: Monad m => (ao -> [ai])
-//            -> Enumeratee ao ai m b
-//  concatMap f = concatMapM (return . f)
-
-
-//-- | @'concatMapM' f@ applies /f/ to each input element and feeds the
-//-- resulting outputs to the inner iteratee.
-//--
-//-- Since: 0.4.8
-//concatMapM :: Monad m => (ao -> m [ai])
-//           -> Enumeratee ao ai m b
-//concatMapM f = checkDone (continue . step) where
-//	step k EOF = yield (Continue k) EOF
-//	step k (Chunks xs) = loop k xs
-//
-//	loop k [] = continue (step k)
-//	loop k (x:xs) = do
-//		fx <- lift (f x)
-//		k (Chunks fx) >>==
-//			checkDoneEx (Chunks xs) (`loop` xs)
-
   def concatMap[AO, AI, F[_], B](f: AO => Stream[AI])(implicit M : Monad[F]): Enumeratee[AO, AI, F, B] = {
     def pointf(ao: AO): F[Stream[AI]] = M.point(f(ao))
     concatMapM[AO, AI, F, B](pointf)
   }
-
 
   def concatMapM[AO, AI, M[_], B](f: AO => M[Stream[AI]])(implicit M : Monad[M]): Enumeratee[AO, AI, M, B] = {
     def step: (StreamI[AI] => Iteratee[AI, M, B]) => StreamI[AO] => Iteratee[AO, M, Step[AI, M, B]] = si => so => (si, so) match {
