@@ -16,10 +16,18 @@ object Internal {
   case class Chunks[A](l: Stream[A]) extends StreamI[A]
   case class EOF[A]() extends StreamI[A]
 
-  sealed trait Step[A, F[_], B]
-  case class Continue[A, F[_], B](f: StreamI[A] => Iteratee[A, F, B]) extends Step[A, F, B]
-  case class Yield[A, F[_], B](b: B, s: StreamI[A]) extends Step[A, F, B]
-  case class ErrorS[A, F[_], B](t: Throwable) extends Step[A, F, B]
+  sealed trait Step[A, F[_], B] {
+    def fold[R](continue: (StreamI[A] => Iteratee[A, F, B]) => R, yieldI: (=> B) => StreamI[A] => R, error: Throwable => R): R
+  }
+  case class Continue[A, F[_], B](f: (StreamI[A]) => Iteratee[A, F, B]) extends Step[A, F, B] {
+    def fold[R](continue: (StreamI[A] => (Iteratee[A, F, B])) => R, yieldI: (=> B) => (StreamI[A]) => R, error: (Throwable) => R) = continue(f)
+  }
+  case class Yield[A, F[_], B](b: B, s: StreamI[A]) extends Step[A, F, B] {
+    def fold[R](continue: (StreamI[A] => Iteratee[A, F, B]) => R, yieldI: (=> B) => (StreamI[A]) => R, error: (Throwable) => R) = yieldI(b)(s)
+  }
+  case class ErrorS[A, F[_], B](t: Throwable) extends Step[A, F, B] {
+    def fold[R](continue: (StreamI[A] => Iteratee[A, F, B]) => R, yieldI: (=> B) => (StreamI[A]) => R, error: (Throwable) => R) = error(t)
+  }
 
   case object Error {
     def unapply[A, F[_], B](s: Step[A, F, B]): Boolean = s match {
