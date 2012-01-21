@@ -89,8 +89,8 @@ object Internal {
      * Wraps an inner iteratee in an enumeratee wrapper. The resulting iteratee will consume the
      * wrapper's input type and yield inner's output type.
      */
-  def joinI[I](outer: Iteratee[A, F, Step[I, F, B]])(implicit M: Monad[F]): Iteratee[A, F, B] = {
-      val ITP = Iteratees.IterateeMonad[A, F]
+     def joinI[I](outer: Iteratee[A, F, Step[I, F, B]])(implicit M: Monad[F]): Iteratee[A, F, B] = {
+      val ITP = IterateeInstances.IterateeMonad[A, F]
        def check: Step[I, F, B] => Iteratee[A, F, B] = step => step match {
          case Continue(k) => k(EOF()) >>== (s => s match {
              case Continue(_) => sys.error("joinI: divergent iteratee")
@@ -100,6 +100,42 @@ object Internal {
          case ErrorS(t) => throw t
        }
       outer flatMap check
+     }
+
+     def zip[C](that: Iteratee[A, F, C])(implicit M: Monad[F]): Iteratee[A, F, (B, C)] = {
+       def enumStream[D](stream: StreamI[A])(s: Step[A, F, D]): Iteratee[A, F, D] = s match {
+         case Continue(k) => k(stream)
+         case Yield(b, extra) => yieldI(b, streamI.streamIMonoid[A].append(extra, stream))
+         case ErrorS(t) => throw t
+       }
+
+       def shorter(s1: StreamI[A])(s2: StreamI[A]): StreamI[A] = (s1, s2) match {
+         case (c1@Chunks(xs), c2@Chunks(ys)) => if (xs.length < ys.length) c1 else c2
+         case (_, _) => EOF()
+       }
+
+       import IterateeInstances._
+       def step: StreamI[A] => Iteratee[A, F, (B, C)] = (s: StreamI[A]) => s match {
+         case Chunks(Stream.Empty) => continue(step)
+         case stream@Chunks(_) => {
+           MonadTrans[({type λ[α[_], β] = Iteratee[A, α, β]})#λ].liftM((this ==<< enumStream(stream)).value).flatMap(s1 => {
+             MonadTrans[({type λ[α[_], β] = Iteratee[A, α, β]})#λ].liftM((that ==<< enumStream(stream)).value).flatMap((s2: Step[A, F, C]) => (s1, s2) match {
+               case (Continue(k1), Continue(k2)) => continue(k1).zip(continue(k2))
+               case (Yield(b1, _), Continue(k2)) => yieldI[A, F, B](b1, Chunks(Stream.Empty)).zip(continue(k2))
+               case (Continue(k1), Yield(b2, _)) => continue(k1).zip(yieldI(b2, Chunks(Stream.Empty)))
+               case (Yield(b1, ex1), Yield(b2, ex2)) => yieldI((b1, b2), shorter(ex1)(ex2))
+               case (_, _) => sys.error("bzzt")
+             })
+           })
+         }
+         case EOF() => {
+           val ITP = IterateeInstances.IterateeMonad[A, F]
+           val i1: Iteratee[A, F, B] = MonadTrans[({type λ[α[_], β] = Iteratee[A, α, β]})#λ].liftM(this.value).flatMap(enumEOF)
+           val i2: Iteratee[A, F, C] = MonadTrans[({type λ[α[_], β] = Iteratee[A, α, β]})#λ].liftM(that.value).flatMap(enumEOF)
+           i1.flatMap(b1 => i2.flatMap(b2 => ITP.point(b1, b2)))
+         }
+       }
+     continue(step)
     }
   }
 
@@ -139,13 +175,13 @@ object Internal {
   /**
    * Sends EOF to its iteratee.
    */
-  def enumEOF[A, F[_], B](implicit m: Monad[F]): Enumerator[A, F, B] = s => s match {
+  def enumEOF[A, F[_], B](implicit M: Monad[F]): Enumerator[A, F, B] = s => s match {
       case Yield(x, _) => yieldI[A, F, B](x, EOF())
       case ErrorS(s) => returnI[A, F, B](err(s))
       case Continue(k) => {
-        >>==(k(EOF()))(check => check match {
+        k(EOF()) >>== (check => check match {
           case Continue(_) => sys.error("enumEOF: divergent iteratee")
-          case s => enumEOF[A, F, B](m)(s)
+          case s => enumEOF[A, F, B](M)(s)
      })}
   }
 
@@ -185,7 +221,7 @@ import Internal._
 import scalaz.{MonadTrans, Functor, Monad, MonadPlus}
 import scalaz._
 
-trait Iteratees {
+trait IterateeInstances {
 
   implicit def IterateeMonad[X, F[_]](implicit F0: Monad[F]) = new IterateeMonad[X, F] {
     implicit def F = F0
@@ -201,7 +237,7 @@ trait Iteratees {
   }
 }
 
-object Iteratees extends Iteratees
+object IterateeInstances extends IterateeInstances
 
 
 private[enumerator] trait IterateeMonad[X, F[_]] extends Monad[({type l[a] = Iteratee[X, F, a]})#l] {
@@ -213,4 +249,16 @@ private[enumerator] trait IterateeMonad[X, F[_]] extends Monad[({type l[a] = Ite
   override def map[A, B](fa: Iteratee[X, F, A])(f: (A) => B): Iteratee[X, F, B] = fa map f
 
   def point[A](a: => A) = yieldI(a, Chunks(Stream.empty[X]))
+}
+
+object streamI extends StreamIInstances
+trait StreamIInstances {
+  implicit def streamIMonoid[A] = new Monoid[StreamI[A]] {
+    def append(f1: StreamI[A], f2: => StreamI[A]) = (f1, f2) match {
+      case (Chunks(xs), Chunks(ys)) =>  Chunks(xs #::: ys)
+      case (_, _) =>  EOF()
+    }
+
+    def zero = Chunks(Stream.Empty)
+  }
 }
