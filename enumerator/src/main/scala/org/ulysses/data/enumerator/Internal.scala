@@ -39,6 +39,7 @@ object Internal {
   def err[A, F[_], B](t: Throwable) = ErrorS[A, F, B](t)
 
   case class Iteratee[A, F[_], B](value: F[Step[A, F, B]]) {
+    def iterateeMonad(implicit M: Monad[F]) = IterateeInstances.IterateeMonad[A, F]
     def apply(f: (=> B) => F[B])(implicit m: Monad[F]): F[B] = {
       m.bind(value)((mStep: Step[A, F, B]) => mStep match {
         case Yield(b, s) => m.point(b)
@@ -129,14 +130,18 @@ object Internal {
            })
          }
          case EOF() => {
-           val ITP = IterateeInstances.IterateeMonad[A, F]
            val i1: Iteratee[A, F, B] = MonadTrans[({type λ[α[_], β] = Iteratee[A, α, β]})#λ].liftM(this.value).flatMap(enumEOF)
            val i2: Iteratee[A, F, C] = MonadTrans[({type λ[α[_], β] = Iteratee[A, α, β]})#λ].liftM(that.value).flatMap(enumEOF)
-           i1.flatMap(b1 => i2.flatMap(b2 => ITP.point(b1, b2)))
+           i1.flatMap(b1 => i2.flatMap(b2 => iterateeMonad.point(b1, b2)))
          }
        }
      continue(step)
     }
+
+    def zip3[C, D](i2: Iteratee[A, F, C])(i3: Iteratee[A, F, D])(implicit M: Monad[F]): Iteratee[A, F, (B, C, D)] =
+      zip(i2.zip(i3)).flatMap{case (b1, (b2, b3)) => iterateeMonad.point(b1, b2, b3)}
+    def zip4[C, D, E](i2: Iteratee[A, F, C])(i3: Iteratee[A, F, D])(i4: Iteratee[A, F, E])(implicit M: Monad[F]): Iteratee[A, F, (B, C, D, E)] =
+      zip(i2.zip3(i3)(i4)).flatMap{case (b1, (b2, b3, b4)) => iterateeMonad.point(b1, b2, b3, b4)}
   }
 
   //    def joinE[AI, A, F[_], B](enum: Enumerator[A, F, Step[AI, F, B]])(enee: Enumeratee[A, AI, F, B])(implicit M: Monad[F]): Enumerator[AI, F, B] = s => {
