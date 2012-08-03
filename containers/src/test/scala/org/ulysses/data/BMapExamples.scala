@@ -13,7 +13,7 @@ class BMapExamples extends Specification {
     import scalaz._
     import std.anyVal._
     import scalaz.Equal._
-    import Ident._
+    import Id._
 
     "create BMap from list" in {
       val t1 = fromList(List((5, "a"), (3, "b"), (7, "C")))

@@ -668,7 +668,7 @@ trait BMapInstances {
     
     def point[A](a: => A) = BMap.empty[K, A] //TODO
 
-    def foldRight[A, B](fa: BMap[K, A], z: => B)(f: (A, => B) => B): B = fa.foldRight(f)(z)
+    override def foldRight[A, B](fa: BMap[K, A], z: => B)(f: (A, => B) => B): B = fa.foldRight(f)(z)
 
     def traverseImpl[F[_], A, B](m: BMap[K, A])(f: (A) => F[B])(implicit F: Applicative[F]): F[BMap[K, B]] = {
       def mkBin[K, V](s: Int)(k: K)(v: V)(l: BMap[K, V])(r: BMap[K, V]): BMap[K, V] = Bin(s, k, v, l, r)
