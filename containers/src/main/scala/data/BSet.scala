@@ -155,7 +155,7 @@ sealed trait BSet[A] {
     case (s1, s2) => hedgeUnion(None, None, s1, s2)
   }
 
-  def hedgeUnion(blo: Option[A], bhi: Option[A], s1: BSet[A], s2: BSet[A])(implicit O: Order[A]): BSet[A] =
+  private def hedgeUnion(blo: Option[A], bhi: Option[A], s1: BSet[A], s2: BSet[A])(implicit O: Order[A]): BSet[A] =
     (s1, s2) match {
       case (t1, Tip()) => t1
       case (Tip(), Bin(_, x, l, r)) => join(x, filterGt(blo, l), filterLt(bhi, r))
@@ -163,7 +163,7 @@ sealed trait BSet[A] {
       case (Bin(_, x, l, r), t2) => join(x, hedgeUnion(blo, Some(x), l, trim(blo, Some(x), t2)), hedgeUnion(Some(x), bhi, r, trim(Some(x), bhi, t2)))
     }
 
-  def filterGt(a: Option[A], s: BSet[A])(implicit O: Order[A]): BSet[A] = {
+  private def filterGt(a: Option[A], s: BSet[A])(implicit O: Order[A]): BSet[A] = {
     def filter1(b1: A, s1: BSet[A]): BSet[A] =
       s1.fold(empty, (_, x, l, r) => O.order(b1, x) match {
         case LT => join(x, filter1(b1, l), r)
@@ -189,7 +189,7 @@ sealed trait BSet[A] {
     }
   }
 
-  def trim(x1: Option[A], x2: Option[A], s: BSet[A])(implicit O: Order[A]): BSet[A] = {
+  private def trim(x1: Option[A], x2: Option[A], s: BSet[A])(implicit O: Order[A]): BSet[A] = {
     def greater(lo: A, s: BSet[A]): BSet[A] =
       s.fold(s, (_, x, _, r) => if (O.lessThanOrEqual(x, lo)) greater(lo, r) else s)
     def lesser(hi: A, s: BSet[A]): BSet[A] =
@@ -209,7 +209,7 @@ sealed trait BSet[A] {
     }
   }
 
-  def join(x: A, s1: BSet[A], s2: BSet[A])(implicit O: Order[A]): BSet[A] = (s1, s2) match {
+  private def join(x: A, s1: BSet[A], s2: BSet[A])(implicit O: Order[A]): BSet[A] = (s1, s2) match {
     case (Tip(), r) => insertMin(x, r)
     case (l, Tip()) => insertMax(x, l)
     case (l@Bin(sizeL, y, ly, ry), r@Bin(sizeR, z, lz, rz)) =>
@@ -218,12 +218,12 @@ sealed trait BSet[A] {
       else bin(x, l, r)
   }
 
-  def insertMin(x: A, s: BSet[A]): BSet[A] =
+  private def insertMin(x: A, s: BSet[A]): BSet[A] =
     s.fold(singleton(x),
       (_, y, l, r) => balanceL(y, (insertMin(x, l)), r)
     )
 
-  def insertMax(x: A, s: BSet[A]): BSet[A] =
+  private def insertMax(x: A, s: BSet[A]): BSet[A] =
     s.fold(singleton(x),
       (_, y, l, r) => balanceR(y, l, (insertMax(x, r)))
     )

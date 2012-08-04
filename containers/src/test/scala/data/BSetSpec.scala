@@ -27,6 +27,18 @@ class BSetSpec extends Specification with ScalaCheck {
    }
   }
 
+  "findMin" ! Prop.forAll(nel) { (l: List[Int]) => {
+    val a = fromList(l).findMin
+    a must be_==(l.sorted.head)
+   }
+  }
+
+  "findMax" ! Prop.forAll(nel) { (l: List[Int]) => {
+    val a = fromList(l).findMax
+    a must be_==(l.sortWith((a, b) => b < a).head)
+   }
+  }
+
   "contain unique elements" ! check {(l1: List[Int]) =>
     val l2 = l1.distinct
     val s1 = fromList(l1)

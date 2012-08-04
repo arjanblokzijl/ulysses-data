@@ -5,7 +5,7 @@ import Keys._
 object UlyssesDataBuild extends Build {
 
   lazy val root = Project(
-    id = "ulysses-data",
+    id = "data",
     base = file("."),
     settings = standardSettings,
     aggregate = Seq(containers)
@@ -20,7 +20,7 @@ object UlyssesDataBuild extends Build {
   )
 
   lazy val standardSettings = Defaults.defaultSettings ++ Seq(
-    organization := "org.ulysses.data",
+    organization := "org.data",
     version := "0.1-SNAPSHOT",
     scalaVersion := "2.9.2",
     scalacOptions  ++= Seq("-encoding", "UTF-8", "-deprecation", "-unchecked"),
